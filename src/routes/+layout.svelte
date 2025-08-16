@@ -8,14 +8,20 @@
 
 <div class="flex h-screen w-screen bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-50">
   <Sidebar ariaLabel="Main navigation" ontoggle={(collapsed: boolean) => console.log('Sidebar toggled:', collapsed)}>
-    {#snippet brand({ collapsed }: { collapsed: boolean })}
-      {#if collapsed}
-        <div class="mx-auto text-sm font-extrabold tracking-wide">RS</div>
-      {:else}
-        <div class="flex items-center gap-2 font-extrabold">
-          <span>Restore Sites</span>
+    {#snippet brand({ collapsed, isAnimating }: { collapsed: boolean; isAnimating: boolean })}
+      <div class="relative w-full min-h-[24px]">
+        <!-- Collapsed state - RS -->
+        <div class="absolute inset-0 flex items-center justify-center transition-all duration-200 ease-in-out {collapsed ? (isAnimating ? 'opacity-0' : 'opacity-100 delay-100') : 'opacity-0'}">
+          <div class="text-sm font-extrabold tracking-wide">RS</div>
         </div>
-      {/if}
+
+        <!-- Expanded state - Restore Sites -->
+        <div class="transition-all duration-200 ease-in-out {collapsed ? 'opacity-0' : (isAnimating ? 'opacity-0' : 'opacity-100 delay-100')}">
+          <div class="flex items-center gap-2 font-extrabold whitespace-nowrap">
+            <span>Restore Sites</span>
+          </div>
+        </div>
+      </div>
     {/snippet}
 
     {#snippet children({ collapsed }: { collapsed: boolean })}

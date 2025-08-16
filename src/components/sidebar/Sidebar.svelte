@@ -8,7 +8,7 @@
         widthCollapsed?: number;
         persistKey?: string | null;
         ariaLabel?: string;
-        brand?: import('svelte').Snippet<[{ collapsed: boolean }]>;
+        brand?: import('svelte').Snippet<[{ collapsed: boolean; isAnimating: boolean }]>;
         children?: import('svelte').Snippet<[{ collapsed: boolean }]>;
         footer?: import('svelte').Snippet<[{ collapsed: boolean }]>;
         // Callback props to replace createEventDispatcher
@@ -29,6 +29,8 @@
 
     // Component state
     let collapsed = $state(defaultCollapsed);
+    let isAnimating = $state(false);
+    let animationTimeoutId: number | undefined;
 
     onMount(() => {
         if (typeof window !== "undefined" && persistKey) {
@@ -40,7 +42,19 @@
     });
 
     function toggle() {
+        isAnimating = true;
         collapsed = !collapsed;
+
+        // Clear any existing timeout
+        if (animationTimeoutId) {
+            clearTimeout(animationTimeoutId);
+        }
+
+        // Reset animation state after transition duration (300ms)
+        animationTimeoutId = setTimeout(() => {
+            isAnimating = false;
+        }, 300);
+
         if (persistKey) {
             try {
                 localStorage.setItem(persistKey, collapsed ? "1" : "0");
@@ -64,8 +78,8 @@
     <div
         class="flex h-14 items-center justify-between gap-2 border-b px-3 dark:border-neutral-800"
     >
-        <div class="flex min-w-0 items-center gap-2 transition-all duration-300 ease-in-out">
-            {@render brand?.({ collapsed })}
+        <div class="flex min-w-0 items-center gap-2 overflow-hidden">
+            {@render brand?.({ collapsed, isAnimating })}
         </div>
 
         <button
