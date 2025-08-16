@@ -7,8 +7,8 @@
 </script>
 
 <div class="flex h-screen w-screen bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-50">
-  <Sidebar ariaLabel="Main navigation">
-    {#snippet brand({ collapsed })}
+  <Sidebar ariaLabel="Main navigation" ontoggle={(collapsed: boolean) => console.log('Sidebar toggled:', collapsed)}>
+    {#snippet brand({ collapsed }: { collapsed: boolean })}
       {#if collapsed}
         <div class="mx-auto text-sm font-extrabold tracking-wide">RS</div>
       {:else}
@@ -18,21 +18,23 @@
       {/if}
     {/snippet}
 
-    {#snippet children({ collapsed })}
-      <SidebarItem label="House" {collapsed} active ariaLabel="House">
-        {#snippet icon()}
-          <House size={18} />
-        {/snippet}
-      </SidebarItem>
+    {#snippet children({ collapsed }: { collapsed: boolean })}
+      <div class="space-y-1">
+        <SidebarItem label="House" {collapsed} active ariaLabel="House">
+          {#snippet icon()}
+            <House size={18} />
+          {/snippet}
+        </SidebarItem>
 
-      <SidebarItem label="Projects" {collapsed} ariaLabel="Projects">
-        {#snippet icon()}
-          <Folder size={18} />
-        {/snippet}
-      </SidebarItem>
+        <SidebarItem label="Projects" {collapsed} ariaLabel="Projects">
+          {#snippet icon()}
+            <Folder size={18} />
+          {/snippet}
+        </SidebarItem>
+      </div>
     {/snippet}
 
-    {#snippet footer({ collapsed })}
+    {#snippet footer({ collapsed }: { collapsed: boolean })}
       <SidebarItem label="Settings" {collapsed} ariaLabel="Settings">
         {#snippet icon()}
           <Settings size={18} />

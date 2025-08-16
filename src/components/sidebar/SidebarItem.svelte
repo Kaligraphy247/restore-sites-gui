@@ -1,8 +1,6 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
-
     // Public props
-    export interface Props {
+    interface Props {
         label: string;
         collapsed?: boolean;
         href?: string | null;
@@ -17,6 +15,8 @@
         selectedClass?: string | null;
         icon?: import('svelte').Snippet;
         right?: import('svelte').Snippet;
+        // Callback props to replace createEventDispatcher
+        onclick?: (event: MouseEvent) => void;
     }
 
     let {
@@ -32,10 +32,9 @@
         className = "",
         selectedClass = null,
         icon,
-        right
+        right = undefined,
+        onclick = undefined
     }: Props = $props();
-
-    const dispatch = createEventDispatcher<{ click: MouseEvent }>();
 
 
     function handleClick(e: MouseEvent) {
@@ -44,7 +43,7 @@
             e.stopPropagation();
             return;
         }
-        dispatch("click", e);
+        onclick?.(e);
     }
 
     let elementTag: "a" | "button" = $derived(href && !disabled ? "a" : "button");
@@ -56,8 +55,8 @@
     let classes: string = $derived(
         [
             // layout
-            "flex w-full items-center gap-3 rounded-md outline-none transition",
-            collapsed ? "justify-center px-2 py-2" : "justify-start px-3 py-2",
+            "flex w-full items-center rounded-md outline-none transition-all duration-200 ease-in-out",
+            collapsed ? "justify-center px-2 py-2 gap-0" : "justify-start px-3 py-2 gap-3",
             // colors and interaction
             disabled
                 ? "cursor-not-allowed opacity-50"
@@ -97,8 +96,8 @@
         </span>
 
         <!-- Label and right content (hidden when collapsed) -->
-        {#if !collapsed}
-            <span class="min-w-0 flex-1 truncate">{label}</span>
+        <div class={`flex items-center min-w-0 transition-all duration-200 ease-in-out ${collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-full ml-3'}`}>
+            <span class="min-w-0 flex-1 truncate text-left">{label}</span>
             <div class="ml-auto inline-flex items-center gap-2">
                 {#if badge}
                     <span
@@ -109,7 +108,7 @@
                 {/if}
                 {@render right?.()}
             </div>
-        {/if}
+        </div>
     </svelte:element>
 
     <!-- Tooltip shown only when collapsed -->
