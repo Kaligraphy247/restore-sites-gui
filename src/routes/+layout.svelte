@@ -26,13 +26,13 @@
 
     {#snippet children({ collapsed }: { collapsed: boolean })}
       <div class="space-y-1">
-        <SidebarItem label="House" {collapsed} active ariaLabel="House">
+        <SidebarItem label="House" {collapsed} active ariaLabel="House" href={"/"}>
           {#snippet icon()}
             <House size={18} />
           {/snippet}
         </SidebarItem>
 
-        <SidebarItem label="Projects" {collapsed} ariaLabel="Projects">
+        <SidebarItem label="Projects" {collapsed} ariaLabel="Projects" href={"/projects"}>
           {#snippet icon()}
             <Folder size={18} />
           {/snippet}
