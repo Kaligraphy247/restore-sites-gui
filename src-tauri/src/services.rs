@@ -88,23 +88,49 @@ impl CollectionService {
     }
 }
 
+// Helper struct to hold resolved browser configuration
+#[derive(Debug, Clone)]
+struct ResolvedBrowserConfig {
+    browser: Browser,
+    mode: BrowserMode,
+    custom_path: Option<String>,
+}
+
 pub struct BrowserService;
 
 impl BrowserService {
+    // Resolve browser configuration from collection config with fallbacks
+    fn resolve_browser_config(config: &CollectionConfig) -> ResolvedBrowserConfig {
+        // For now, use simple fallbacks until profiles system is fully implemented
+        // TODO: Add profile resolution logic here in Phase 1.3
+        
+        let browser = config.browser.clone().unwrap_or(Browser::Chrome);
+        let mode = config.mode.clone().unwrap_or(BrowserMode::Incognito);
+        let custom_path = config.custom_path.clone();
+        
+        ResolvedBrowserConfig {
+            browser,
+            mode, 
+            custom_path,
+        }
+    }
+
     #[instrument(skip(sites))]
     pub fn restore_sites_with_config(
         sites: Vec<SiteEntry>,
         config: &CollectionConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let resolved_config = Self::resolve_browser_config(config);
+        
         info!(
             "Starting browser restoration for {} sites with {:?} in {:?} mode",
             sites.len(),
-            config.browser,
-            config.mode
+            resolved_config.browser,
+            resolved_config.mode
         );
 
         for (index, site) in sites.iter().enumerate() {
-            if let Err(e) = Self::open_url_with_config(&site.url, config) {
+            if let Err(e) = Self::open_url_with_resolved_config(&site.url, &resolved_config) {
                 warn!("Failed to open URL {}: {}", site.url, e);
             } else {
                 info!("Opened URL {}: {}", index + 1, site.url);
@@ -119,9 +145,9 @@ impl BrowserService {
     }
 
     #[instrument(skip(config))]
-    fn open_url_with_config(
+    fn open_url_with_resolved_config(
         url: &str,
-        config: &CollectionConfig,
+        config: &ResolvedBrowserConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let quoted_url = shlex::try_quote(url).unwrap_or_else(|_| url.into());
 

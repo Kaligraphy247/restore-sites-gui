@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::models::{CollectionRecord, Database};
+use crate::models::{BrowserProfile, BrowserMode, CollectionRecord, Database};
 use crate::utils::get_data_dir;
 use chrono::Utc;
 use std::fs;
@@ -150,5 +150,115 @@ impl JsonStore {
             warn!("Record with ID {} not found for deletion", id);
             Ok(false)
         }
+    }
+
+    // Browser Profile Management
+    
+    #[instrument(skip(self, profile))]
+    pub fn create_profile(
+        &self,
+        profile: BrowserProfile,
+    ) -> Result<BrowserProfile, Box<dyn std::error::Error>> {
+        let mut database = self.load()?;
+        
+        // Check for duplicate profile ID
+        if database.profiles.iter().any(|p| p.id == profile.id) {
+            return Err(format!("Profile with ID '{}' already exists", profile.id).into());
+        }
+        
+        database.profiles.push(profile.clone());
+        database.meta.last_updated = Utc::now();
+        
+        self.save(&database)?;
+        info!("Created new browser profile: {}", profile.id);
+        
+        Ok(profile)
+    }
+    
+    #[instrument]
+    pub fn get_profile(
+        &self,
+        id: &str,
+    ) -> Result<Option<BrowserProfile>, Box<dyn std::error::Error>> {
+        let database = self.load()?;
+        let profile = database.profiles.into_iter().find(|p| p.id == id);
+        Ok(profile)
+    }
+    
+    #[instrument]
+    pub fn get_all_profiles(&self) -> Result<Vec<BrowserProfile>, Box<dyn std::error::Error>> {
+        let database = self.load()?;
+        Ok(database.profiles)
+    }
+    
+    #[instrument(skip(self, updated_profile))]
+    pub fn update_profile(
+        &self,
+        id: &str,
+        updated_profile: BrowserProfile,
+    ) -> Result<BrowserProfile, Box<dyn std::error::Error>> {
+        let mut database = self.load()?;
+        
+        // Find and replace the profile with the given ID
+        let mut found = false;
+        for profile in &mut database.profiles {
+            if profile.id == id {
+                *profile = updated_profile.clone();
+                profile.updated_at = Utc::now(); // Ensure updated timestamp
+                found = true;
+                break;
+            }
+        }
+        
+        if !found {
+            return Err(format!("Profile with ID '{}' not found for update", id).into());
+        }
+        
+        database.meta.last_updated = Utc::now();
+        self.save(&database)?;
+        
+        info!("Updated browser profile: {}", id);
+        Ok(updated_profile)
+    }
+    
+    #[instrument]
+    pub fn delete_profile(&self, id: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        let mut database = self.load()?;
+        let initial_len = database.profiles.len();
+        
+        database.profiles.retain(|profile| profile.id != id);
+        
+        if database.profiles.len() < initial_len {
+            database.meta.last_updated = Utc::now();
+            self.save(&database)?;
+            info!("Deleted browser profile: {}", id);
+            Ok(true)
+        } else {
+            warn!("Profile with ID '{}' not found for deletion", id);
+            Ok(false)
+        }
+    }
+    
+    // Default Browser Mode Management
+    
+    #[instrument]
+    pub fn get_default_browser_mode(&self) -> Result<BrowserMode, Box<dyn std::error::Error>> {
+        let database = self.load()?;
+        Ok(database.meta.default_browser_mode)
+    }
+    
+    #[instrument]
+    pub fn set_default_browser_mode(
+        &self,
+        mode: BrowserMode,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut database = self.load()?;
+        database.meta.default_browser_mode = mode.clone();
+        database.meta.last_updated = Utc::now();
+        
+        self.save(&database)?;
+        info!("Updated default browser mode to: {:?}", mode);
+        
+        Ok(())
     }
 }
