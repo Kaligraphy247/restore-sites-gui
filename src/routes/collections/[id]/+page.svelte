@@ -40,6 +40,7 @@
     // Dialog states
     let showNameDialog = $state(false);
     let showConfigDialog = $state(false);
+    let showDeleteDialog = $state(false);
     let tempName = $state("");
     let tempBrowser = $state<Browser>("Chrome");
     let tempMode = $state<BrowserMode>("Incognito");
@@ -187,6 +188,7 @@
                 collection.id,
                 sites,
                 collection.name,
+                collection.config,
             );
             collection = updated;
             editingUrl = null;
@@ -222,6 +224,7 @@
                 collection.id,
                 sites,
                 collection.name,
+                collection.config,
             );
             collection = updated;
             toast.success("Site removed");
@@ -249,6 +252,7 @@
                 collection.id,
                 sites,
                 collection.name,
+                collection.config,
             );
             collection = updated;
             showAddForm = false;
@@ -261,15 +265,13 @@
         }
     }
 
-    async function handleDeleteCollection() {
-        if (
-            !confirm(
-                "Are you sure you want to delete this collection? This action cannot be undone.",
-            )
-        ) {
-            return;
-        }
+    function openDeleteDialog() {
+        showDeleteDialog = true;
+    }
 
+    async function confirmDeleteCollection() {
+        showDeleteDialog = false;
+        
         try {
             await deleteCollection(collection.id);
             toast.success("Collection deleted");
@@ -427,7 +429,7 @@
                 Config
             </button>
             <button
-                onclick={handleDeleteCollection}
+                onclick={openDeleteDialog}
                 class="flex items-center gap-2 px-4 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md hover:bg-red-100 dark:hover:bg-red-900/80 transition-colors duration-200"
             >
                 <Trash2 size={16} />
@@ -664,6 +666,48 @@
             </button>
             <button
                 onclick={() => (showConfigDialog = false)}
+                class="px-4 py-2 bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
+            >
+                Cancel
+            </button>
+        </div>
+    </div>
+</Dialog>
+
+<!-- Delete Confirmation Dialog -->
+<Dialog
+    open={showDeleteDialog}
+    title="Delete Collection"
+    description="This action cannot be undone. Are you sure you want to delete this collection?"
+    onclose={() => (showDeleteDialog = false)}
+>
+    <div class="space-y-4">
+        <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <div class="w-5 h-5 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Trash2 size={12} class="text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                    <p class="text-sm text-red-800 dark:text-red-200 font-medium">
+                        You are about to delete "{collection.name}"
+                    </p>
+                    <p class="text-xs text-red-700 dark:text-red-300 mt-1">
+                        This collection contains {collection.sites.length} sites. Once deleted, this data cannot be recovered.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2 pt-4">
+            <button
+                onclick={confirmDeleteCollection}
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+            >
+                Delete Collection
+            </button>
+            <button
+                onclick={() => (showDeleteDialog = false)}
                 class="px-4 py-2 bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
             >
                 Cancel

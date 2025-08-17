@@ -206,7 +206,7 @@
                     bind:value={sites}
                     name="projects"
                     placeholder="Paste your browser tabs here. Each line should be: Title https://example.com"
-                    class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg px-4 py-3 resize-none bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    class="w-full h-[200px] border border-neutral-300 dark:border-neutral-600 rounded-lg px-4 py-3 resize-none bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 ></textarea>
                 <div
                     class="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400"

@@ -192,7 +192,8 @@
 
 <div class="bg-neutral-50 dark:bg-neutral-900">
   <!-- Header -->
-  <div class="bg-white dark:bg-neutral-800 shadow-sm border-b border-neutral-200 dark:border-neutral-700">
+  <!-- <div class="bg-white dark:bg-neutral-800 shadow-sm border-b border-neutral-200 dark:border-neutral-800"> -->
+  <div class="border-b border-b-neutral-800">
     <div class="max-w-4xl mx-auto px-6 py-4">
       <div class="flex items-center gap-3">
         <Settings class="w-6 h-6 text-neutral-600 dark:text-neutral-300" />

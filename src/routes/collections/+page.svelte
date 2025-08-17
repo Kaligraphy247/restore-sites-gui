@@ -51,11 +51,13 @@
                             <div
                                 class="flex items-center gap-4 mt-1 text-sm text-neutral-500 dark:text-neutral-400"
                             >
-                                <div class="flex items-center gap-1">
+                                <div class="flex items-center gap-1 truncate">
                                     <Calendar size={14} />
                                     {new Date(
                                         collection.created_at,
-                                    ).toLocaleDateString()}
+                                    ).toDateString()} @ {new Date(
+                                        collection.created_at,
+                                    ).toLocaleTimeString()}
                                 </div>
                                 <div class="flex items-center gap-1">
                                     <Globe size={14} />
