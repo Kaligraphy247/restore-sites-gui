@@ -411,7 +411,7 @@
                 onclick={selectedCount > 0
                     ? handleRestoreSelected
                     : handleRestore}
-                class="flex items-center gap-2 px-4 py-2 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/80 transition-colors duration-200"
+                class="flex items-center gap-2 px-4 py-2 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/80 transition-colors duration-200 whitespace-nowrap flex-shrink-0"
             >
                 <ArchiveRestore size={16} />
                 {#if selectedCount > 0}

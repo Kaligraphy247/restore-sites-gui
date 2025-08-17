@@ -230,10 +230,10 @@
           </button>
           <button
             onclick={openCreateDialog}
-            class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+            class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 whitespace-nowrap flex-shrink-0"
           >
             <Plus class="w-4 h-4" />
-           <span>Create Profile</span>
+            <span>Create Profile</span>
           </button>
         </div>
       </div>
