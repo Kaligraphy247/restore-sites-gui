@@ -1,3 +1,5 @@
+import type { SiteEntry } from "$lib/types/models";
+
 function rsplit(str: string, sep: string, limit?: number): string[] {
   if (limit === undefined || limit <= 0) {
     return str.split(sep);
@@ -19,12 +21,12 @@ function rsplit(str: string, sep: string, limit?: number): string[] {
   return result;
 }
 
-function formatUrl(sites: string) {
+function formatUrl(sites: string): SiteEntry[] {
   let lines = sites
     .trimStart()
     .trimEnd()
     .split("\n")
-    ?.map((item) => {
+    ?.map((item): SiteEntry => {
       const parts = item.split(" ");
       const url = parts[parts.length - 1]; // Get last element (URL)
       const title = parts.slice(0, -1).join(" "); // Everything except last element (title)

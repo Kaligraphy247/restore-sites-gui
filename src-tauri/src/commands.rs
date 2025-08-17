@@ -1,4 +1,4 @@
-use crate::models::{CollectionData, SaveCollectionRequest, SiteEntry, CollectionConfig};
+use crate::models::{CollectionData, SaveCollectionRequest, SiteEntry};
 use crate::services::{CollectionService, BrowserService};
 use chrono::Utc;
 use tracing::{info, instrument};
@@ -19,7 +19,7 @@ pub fn save_collection(request: SaveCollectionRequest) -> Result<CollectionData,
         sites: request.sites,
         created_at: Utc::now(),
         name: None, // Could be set later
-        config: CollectionConfig::default(), // Default to Chrome incognito
+        config: request.config.unwrap_or_default(), // Use provided config or default
     };
     
     match CollectionService::new() {

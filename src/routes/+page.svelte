@@ -1,25 +1,20 @@
 <script lang="ts">
-    import { invoke } from "@tauri-apps/api/core";
     import { toast } from "svelte-sonner";
     import { formatUrl } from "$lib/utils";
+    import { saveCollection, type SiteEntry, type CollectionData } from "$lib/types";
 
     async function saveSite() {
         if (sites === "") return;
-        let formatted = formatUrl(sites);
+        
+        const formatted: SiteEntry[] = formatUrl(sites);
         console.log({ formatted });
 
         try {
-            const result = await invoke("save_collection", {
-                request: {
-                    sites: formatted,
-                    config: {
-                        browser: "chrome",
-                        mode: "incognito",
-                        custom_path: "",
-                    },
-                },
+            const result: CollectionData = await saveCollection(formatted, {
+                browser: "Edge",
+                mode: "Private"
             });
-            console.log("Project saved:", result);
+            console.log("Collection saved:", result);
             toast.success("Saved");
             sites = "";
         } catch (error) {
