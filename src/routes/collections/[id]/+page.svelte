@@ -3,7 +3,6 @@
     import {
         CircleArrowLeft,
         ArchiveRestore,
-        PencilLine,
         Trash2,
         Plus,
         Check,
@@ -11,6 +10,7 @@
         Globe,
         Calendar,
         Settings,
+        PencilLine
     } from "@lucide/svelte";
     import { goto } from "$app/navigation";
     import {
@@ -18,27 +18,41 @@
         deleteCollection,
         restoreCollection,
     } from "$lib/api/collections";
-    import type { SiteEntry } from "$lib/types/models";
+    import type { CollectionConfig, SiteEntry, Browser, BrowserMode } from "$lib/types/models";
     import { toast } from "svelte-sonner";
+    import Dialog from "$lib/../components/Dialog.svelte";
 
     let { data }: { data: PageData } = $props();
 
     let collection = $state(data.collection);
-    let editingName = $state(false);
     let editingUrl = $state<number | null>(null);
-    let newName = $state(collection.name);
     let editUrlValue = $state("");
     let editTitleValue = $state("");
     let showAddForm = $state(false);
     let newUrl = $state("");
     let newTitle = $state("");
-    let showConfigModal = $state(false);
 
-    // Copy sites for editing
-    let sites = $state([...collection.sites]);
+    // Dialog states
+    let showNameDialog = $state(false);
+    let showConfigDialog = $state(false);
+    let tempName = $state("");
+    let tempBrowser = $state<Browser>("Chrome");
+    let tempMode = $state<BrowserMode>("Incognito");
+
+    // Copy sites for editing - initialize empty first
+    let sites = $state<SiteEntry[]>([]);
 
     // Selection state for sites
     let selectedSites = $state<Set<number>>(new Set());
+
+    // Initialize state from collection data
+    $effect(() => {
+        if (collection) {
+            sites = [...collection.sites];
+            tempBrowser = collection.config?.browser || "Chrome";
+            tempMode = collection.config?.mode || "Incognito";
+        }
+    });
 
     // Computed values for selection
     let selectedCount = $derived(selectedSites.size);
@@ -49,8 +63,13 @@
         selectedSites.size > 0 && selectedSites.size < sites.length,
     );
 
+    function openNameDialog() {
+        tempName = collection.name;
+        showNameDialog = true;
+    }
+
     async function handleSaveName() {
-        if (!newName.trim()) {
+        if (!tempName.trim()) {
             toast.error("Name cannot be empty");
             return;
         }
@@ -59,14 +78,49 @@
             const updated = await updateCollection(
                 collection.id,
                 sites,
-                newName.trim(),
+                tempName.trim(),
             );
             collection = updated;
-            editingName = false;
+            showNameDialog = false;
             toast.success("Collection name updated");
         } catch (error) {
             console.error("Failed to update name:", error);
             toast.error("Failed to update name");
+        }
+    }
+
+    function openConfigDialog() {
+        tempBrowser = collection.config?.browser || "Chrome";
+        tempMode = collection.config?.mode || "Incognito";
+        showConfigDialog = true;
+    }
+
+    async function handleSaveConfig() {
+        try {
+            // Create updated collection data with new config
+            const updatedData = {
+                sites,
+                name: collection.name,
+                config: {
+                    browser: tempBrowser,
+                    mode: tempMode,
+                    custom_path: collection.config?.custom_path
+                },
+                created_at: collection.created_at
+            };
+
+            const updated = await updateCollection(collection.id, sites, collection.name, {
+                browser: tempBrowser,
+                mode: tempMode,
+                custom_path: collection.config?.custom_path
+            });
+
+            collection = updated;
+            showConfigDialog = false;
+            toast.success("Collection settings updated");
+        } catch (error) {
+            console.error("Failed to update config:", error);
+            toast.error("Failed to update settings");
         }
     }
 
@@ -238,10 +292,6 @@
         editUrlValue = "";
     }
 
-    function cancelEditName() {
-        editingName = false;
-        newName = collection.name;
-    }
 
     function cancelAddSite() {
         showAddForm = false;
@@ -263,45 +313,15 @@
             </a>
 
             <div class="flex-1 min-w-0">
-                {#if editingName}
-                    <div class="flex items-center gap-2">
-                        <input
-                            bind:value={newName}
-                            class="text-2xl font-semibold bg-transparent border-b-2 border-blue-500 focus:outline-none text-neutral-800 dark:text-neutral-100"
-                            placeholder="Collection name"
-                            onkeydown={(e) => {
-                                if (e.key === "Enter") handleSaveName();
-                                if (e.key === "Escape") cancelEditName();
-                            }}
-                        />
-                        <button
-                            onclick={handleSaveName}
-                            class="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
-                        >
-                            <Check size={16} />
-                        </button>
-                        <button
-                            onclick={cancelEditName}
-                            class="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                        >
-                            <X size={16} />
-                        </button>
-                    </div>
-                {:else}
-                    <div class="flex items-center gap-2">
-                        <h1
-                            class="text-2xl font-semibold text-neutral-800 dark:text-neutral-100"
-                        >
-                            {collection.name}
-                        </h1>
-                        <button
-                            onclick={() => (editingName = true)}
-                            class="p-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
-                        >
-                            <PencilLine size={16} />
-                        </button>
-                    </div>
-                {/if}
+                <div>
+                    <h1
+                        class="text-2xl font-semibold text-neutral-800 dark:text-neutral-100 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        ondblclick={openNameDialog}
+                        title="Double-click to edit collection name"
+                    >
+                        {collection.name}
+                    </h1>
+                </div>
                 <div
                     class="flex items-center gap-4 mt-1 text-sm text-neutral-500 dark:text-neutral-400"
                 >
@@ -332,10 +352,9 @@
                 {/if}
             </button>
             <button
-                onclick={() => (showConfigModal = true)}
+                onclick={openConfigDialog}
                 class="flex items-center gap-2 px-4 py-2 text-sm bg-neutral-50 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors duration-200"
-                title="Collection Settings (Coming Soon)"
-                disabled
+                title="Collection Settings"
             >
                 <Settings size={16} />
                 Config
@@ -587,84 +606,131 @@
     </div>
 </div>
 
-<!-- Config Modal Placeholder (Future Implementation) -->
-{#if showConfigModal}
-    <div
-        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-    >
-        <div
-            class="bg-white dark:bg-neutral-800 rounded-lg p-6 max-w-md w-full mx-4"
-        >
-            <div class="flex items-center justify-between mb-4">
-                <h3
-                    class="text-lg font-semibold text-neutral-900 dark:text-neutral-100"
-                >
-                    Collection Settings
-                </h3>
-                <button
-                    onclick={() => (showConfigModal = false)}
-                    class="p-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                >
-                    <X size={20} />
-                </button>
-            </div>
+<!-- Name Edit Dialog -->
+<Dialog
+    open={showNameDialog}
+    title="Edit Collection Name"
+    description="Change the name of this collection"
+    onclose={() => showNameDialog = false}
+>
+    <div class="space-y-4">
+        <div>
+            <label for="collection-name" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                Collection Name
+            </label>
+            <input
+                id="collection-name"
+                bind:value={tempName}
+                class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter collection name"
+                onkeydown={(e) => {
+                    if (e.key === 'Enter') handleSaveName();
+                    if (e.key === 'Escape') showNameDialog = false;
+                }}
+            />
+        </div>
 
-            <div class="space-y-4 text-neutral-600 dark:text-neutral-400">
-                <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p class="text-sm">
-                        <strong>Coming Soon:</strong> Configure default browser and
-                        mode settings for this collection.
-                    </p>
-                </div>
-
-                <div class="space-y-3">
-                    <div>
-                        <!-- svelte-ignore a11y_label_has_associated_control -->
-                        <label class="block text-sm font-medium mb-2"
-                            >Default Browser</label
-                        >
-                        <select
-                            disabled
-                            class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-neutral-100 dark:bg-neutral-700 text-neutral-500"
-                        >
-                            <option>Chrome</option>
-                            <option>Firefox</option>
-                            <option>Safari</option>
-                            <option>Edge</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <!-- svelte-ignore a11y_label_has_associated_control -->
-                        <label class="block text-sm font-medium mb-2"
-                            >Browsing Mode</label
-                        >
-                        <select
-                            disabled
-                            class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-neutral-100 dark:bg-neutral-700 text-neutral-500"
-                        >
-                            <option>Normal</option>
-                            <option>Incognito</option>
-                            <option>Private</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-2 mt-6">
-                <button
-                    disabled
-                    class="px-4 py-2 bg-neutral-300 dark:bg-neutral-600 text-neutral-500 rounded-md cursor-not-allowed"
-                >
-                    Save Settings
-                </button>
-                <button
-                    onclick={() => (showConfigModal = false)}
-                    class="px-4 py-2 bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-600"
-                >
-                    Cancel
-                </button>
-            </div>
+        <div class="flex items-center gap-2 pt-4">
+            <button
+                onclick={handleSaveName}
+                disabled={!tempName.trim()}
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-md disabled:cursor-not-allowed transition-colors"
+            >
+                Save Changes
+            </button>
+            <button
+                onclick={() => showNameDialog = false}
+                class="px-4 py-2 bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
+            >
+                Cancel
+            </button>
         </div>
     </div>
-{/if}
+</Dialog>
+
+<!-- Config Dialog -->
+<Dialog
+    open={showConfigDialog}
+    title="Collection Settings"
+    description="Configure default browser and mode for this collection"
+    onclose={() => showConfigDialog = false}
+    maxWidth="lg"
+>
+    <div class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="browser-select" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    Default Browser
+                </label>
+                <select
+                    id="browser-select"
+                    bind:value={tempBrowser}
+                    class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="Chrome">Chrome</option>
+                    <option value="Firefox">Firefox</option>
+                    <option value="Safari">Safari</option>
+                    <option value="Edge">Edge</option>
+                </select>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    Browser to open links in when restoring this collection
+                </p>
+            </div>
+
+            <div>
+                <label for="mode-select" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    Browsing Mode
+                </label>
+                <select
+                    id="mode-select"
+                    bind:value={tempMode}
+                    class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="Normal">Normal</option>
+                    <option value="Incognito">Incognito</option>
+                    <option value="Private">Private</option>
+                </select>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    {#if tempMode === "Normal"}
+                        Open in regular browser windows
+                    {:else if tempMode === "Incognito"}
+                        Open in incognito/private windows (Chrome/Edge)
+                    {:else}
+                        Open in private windows (Firefox/Safari)
+                    {/if}
+                </p>
+            </div>
+        </div>
+
+        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <div class="w-5 h-5 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Settings size={12} class="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                    <p class="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                        Collection-specific settings
+                    </p>
+                    <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                        These settings will be used when restoring this collection. You can override them temporarily using the restore options.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 pt-4">
+            <button
+                onclick={handleSaveConfig}
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+            >
+                Save Settings
+            </button>
+            <button
+                onclick={() => showConfigDialog = false}
+                class="px-4 py-2 bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
+            >
+                Cancel
+            </button>
+        </div>
+    </div>
+</Dialog>
