@@ -1,24 +1,28 @@
 <script lang="ts">
-    import type { PageData } from './$types';
+    import type { PageData } from "./$types";
     import {
         CircleArrowLeft,
         ArchiveRestore,
-        Edit3,
+        PencilLine,
         Trash2,
         Plus,
         Check,
         X,
         Globe,
         Calendar,
-        Save
+        Settings,
     } from "@lucide/svelte";
-    import { goto } from '$app/navigation';
-    import { updateCollection, deleteCollection, restoreCollection } from '$lib/api/collections';
-    import type { SiteEntry } from '$lib/types/models';
-    import { toast } from 'svelte-sonner';
+    import { goto } from "$app/navigation";
+    import {
+        updateCollection,
+        deleteCollection,
+        restoreCollection,
+    } from "$lib/api/collections";
+    import type { SiteEntry } from "$lib/types/models";
+    import { toast } from "svelte-sonner";
 
     let { data }: { data: PageData } = $props();
-    
+
     let collection = $state(data.collection);
     let editingName = $state(false);
     let editingUrl = $state<number | null>(null);
@@ -28,116 +32,197 @@
     let showAddForm = $state(false);
     let newUrl = $state("");
     let newTitle = $state("");
+    let showConfigModal = $state(false);
 
     // Copy sites for editing
     let sites = $state([...collection.sites]);
 
+    // Selection state for sites
+    let selectedSites = $state<Set<number>>(new Set());
+
+    // Computed values for selection
+    let selectedCount = $derived(selectedSites.size);
+    let allSelected = $derived(
+        selectedSites.size === sites.length && sites.length > 0,
+    );
+    let someSelected = $derived(
+        selectedSites.size > 0 && selectedSites.size < sites.length,
+    );
+
     async function handleSaveName() {
         if (!newName.trim()) {
-            toast.error('Name cannot be empty');
+            toast.error("Name cannot be empty");
             return;
         }
-        
+
         try {
-            const updated = await updateCollection(collection.id, sites, newName.trim());
+            const updated = await updateCollection(
+                collection.id,
+                sites,
+                newName.trim(),
+            );
             collection = updated;
             editingName = false;
-            toast.success('Collection name updated');
+            toast.success("Collection name updated");
         } catch (error) {
-            console.error('Failed to update name:', error);
-            toast.error('Failed to update name');
+            console.error("Failed to update name:", error);
+            toast.error("Failed to update name");
         }
     }
 
     async function handleSaveEdit(index: number) {
         if (!editTitleValue.trim() || !editUrlValue.trim()) {
-            toast.error('Title and URL cannot be empty');
+            toast.error("Title and URL cannot be empty");
             return;
         }
 
         sites[index] = {
             title: editTitleValue.trim(),
-            url: editUrlValue.trim()
+            url: editUrlValue.trim(),
         };
 
         try {
-            const updated = await updateCollection(collection.id, sites, collection.name);
+            const updated = await updateCollection(
+                collection.id,
+                sites,
+                collection.name,
+            );
             collection = updated;
             editingUrl = null;
-            toast.success('Site updated');
+            toast.success("Site updated");
         } catch (error) {
-            console.error('Failed to update site:', error);
-            toast.error('Failed to update site');
+            console.error("Failed to update site:", error);
+            toast.error("Failed to update site");
         }
     }
 
     async function handleRemoveSite(index: number) {
         if (sites.length === 1) {
-            toast.error('Cannot remove the last site from a collection');
+            toast.error("Cannot remove the last site from a collection");
             return;
         }
 
         sites.splice(index, 1);
 
+        // Update selected sites to account for removed item
+        const newSelected = new Set<number>();
+        selectedSites.forEach((selectedIndex) => {
+            if (selectedIndex < index) {
+                newSelected.add(selectedIndex);
+            } else if (selectedIndex > index) {
+                newSelected.add(selectedIndex - 1);
+            }
+            // Skip the removed index
+        });
+        selectedSites = newSelected;
+
         try {
-            const updated = await updateCollection(collection.id, sites, collection.name);
+            const updated = await updateCollection(
+                collection.id,
+                sites,
+                collection.name,
+            );
             collection = updated;
-            toast.success('Site removed');
+            toast.success("Site removed");
         } catch (error) {
-            console.error('Failed to remove site:', error);
-            toast.error('Failed to remove site');
+            console.error("Failed to remove site:", error);
+            toast.error("Failed to remove site");
         }
     }
 
     async function handleAddSite() {
         if (!newTitle.trim() || !newUrl.trim()) {
-            toast.error('Title and URL cannot be empty');
+            toast.error("Title and URL cannot be empty");
             return;
         }
 
         const newSite: SiteEntry = {
             title: newTitle.trim(),
-            url: newUrl.trim()
+            url: newUrl.trim(),
         };
 
         sites.push(newSite);
 
         try {
-            const updated = await updateCollection(collection.id, sites, collection.name);
+            const updated = await updateCollection(
+                collection.id,
+                sites,
+                collection.name,
+            );
             collection = updated;
             showAddForm = false;
             newTitle = "";
             newUrl = "";
-            toast.success('Site added');
+            toast.success("Site added");
         } catch (error) {
-            console.error('Failed to add site:', error);
-            toast.error('Failed to add site');
+            console.error("Failed to add site:", error);
+            toast.error("Failed to add site");
         }
     }
 
     async function handleDeleteCollection() {
-        if (!confirm('Are you sure you want to delete this collection? This action cannot be undone.')) {
+        if (
+            !confirm(
+                "Are you sure you want to delete this collection? This action cannot be undone.",
+            )
+        ) {
             return;
         }
 
         try {
             await deleteCollection(collection.id);
-            toast.success('Collection deleted');
-            goto('/collections');
+            toast.success("Collection deleted");
+            goto("/collections");
         } catch (error) {
-            console.error('Failed to delete collection:', error);
-            toast.error('Failed to delete collection');
+            console.error("Failed to delete collection:", error);
+            toast.error("Failed to delete collection");
         }
     }
 
     async function handleRestore() {
         try {
             await restoreCollection(collection.sites);
-            toast.success('Collection restored');
+            toast.success("Collection restored");
         } catch (error) {
-            console.error('Failed to restore collection:', error);
-            toast.error('Failed to restore collection');
+            console.error("Failed to restore collection:", error);
+            toast.error("Failed to restore collection");
         }
+    }
+
+    async function handleRestoreSelected() {
+        if (selectedSites.size === 0) {
+            toast.error("No sites selected");
+            return;
+        }
+
+        try {
+            const selectedSiteEntries = sites.filter((_, index) =>
+                selectedSites.has(index),
+            );
+            await restoreCollection(selectedSiteEntries);
+            toast.success(`${selectedSites.size} sites restored`);
+        } catch (error) {
+            console.error("Failed to restore selected sites:", error);
+            toast.error("Failed to restore selected sites");
+        }
+    }
+
+    function toggleSiteSelection(index: number) {
+        const newSelected = new Set(selectedSites);
+        if (newSelected.has(index)) {
+            newSelected.delete(index);
+        } else {
+            newSelected.add(index);
+        }
+        selectedSites = newSelected;
+    }
+
+    function selectAll() {
+        selectedSites = new Set(sites.map((_, index) => index));
+    }
+
+    function selectNone() {
+        selectedSites = new Set();
     }
 
     function startEditUrl(index: number) {
@@ -165,7 +250,7 @@
     }
 </script>
 
-<div class="space-y-6">
+<div class="space-y-6 mb-8">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
@@ -176,7 +261,7 @@
                 <CircleArrowLeft size={16} />
                 Back
             </a>
-            
+
             <div class="flex-1 min-w-0">
                 {#if editingName}
                     <div class="flex items-center gap-2">
@@ -185,17 +270,17 @@
                             class="text-2xl font-semibold bg-transparent border-b-2 border-blue-500 focus:outline-none text-neutral-800 dark:text-neutral-100"
                             placeholder="Collection name"
                             onkeydown={(e) => {
-                                if (e.key === 'Enter') handleSaveName();
-                                if (e.key === 'Escape') cancelEditName();
+                                if (e.key === "Enter") handleSaveName();
+                                if (e.key === "Escape") cancelEditName();
                             }}
                         />
-                        <button 
+                        <button
                             onclick={handleSaveName}
                             class="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
                         >
                             <Check size={16} />
                         </button>
-                        <button 
+                        <button
                             onclick={cancelEditName}
                             class="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                         >
@@ -204,37 +289,56 @@
                     </div>
                 {:else}
                     <div class="flex items-center gap-2">
-                        <h1 class="text-2xl font-semibold text-neutral-800 dark:text-neutral-100">
+                        <h1
+                            class="text-2xl font-semibold text-neutral-800 dark:text-neutral-100"
+                        >
                             {collection.name}
                         </h1>
-                        <button 
-                            onclick={() => editingName = true}
+                        <button
+                            onclick={() => (editingName = true)}
                             class="p-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
                         >
-                            <Edit3 size={16} />
+                            <PencilLine size={16} />
                         </button>
                     </div>
                 {/if}
-                <div class="flex items-center gap-4 mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                <div
+                    class="flex items-center gap-4 mt-1 text-sm text-neutral-500 dark:text-neutral-400"
+                >
                     <div class="flex items-center gap-1">
                         <Calendar size={14} />
                         {new Date(collection.created_at).toLocaleDateString()}
                     </div>
                     <div class="flex items-center gap-1">
                         <Globe size={14} />
-                        {sites.length} site{sites.length !== 1 ? 's' : ''}
+                        {sites.length} site{sites.length !== 1 ? "s" : ""}
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <div class="flex items-center gap-2">
             <button
-                onclick={handleRestore}
+                onclick={selectedCount > 0
+                    ? handleRestoreSelected
+                    : handleRestore}
                 class="flex items-center gap-2 px-4 py-2 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/80 transition-colors duration-200"
             >
                 <ArchiveRestore size={16} />
-                Restore All
+                {#if selectedCount > 0}
+                    Restore {selectedCount} Selected
+                {:else}
+                    Restore All
+                {/if}
+            </button>
+            <button
+                onclick={() => (showConfigModal = true)}
+                class="flex items-center gap-2 px-4 py-2 text-sm bg-neutral-50 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors duration-200"
+                title="Collection Settings (Coming Soon)"
+                disabled
+            >
+                <Settings size={16} />
+                Config
             </button>
             <button
                 onclick={handleDeleteCollection}
@@ -246,16 +350,73 @@
         </div>
     </div>
 
+    <!-- Selection Controls -->
+    {#if sites.length > 0}
+        <div
+            class="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-3"
+        >
+            <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={allSelected}
+                        indeterminate={someSelected}
+                        onchange={(e) => {
+                          if ((e.target as HTMLInputElement).checked) {
+                                selectAll();
+                            } else {
+                                selectNone();
+                            }
+                        }}
+                        class="w-4 h-4 text-blue-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-2"
+                    />
+                    <span
+                        class="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+                    >
+                        {#if allSelected}
+                            All sites selected
+                        {:else if someSelected}
+                            {selectedCount} of {sites.length} sites selected
+                        {:else}
+                            Select all sites
+                        {/if}
+                    </span>
+                </label>
+            </div>
+            <div class="flex items-center gap-2">
+                <button
+                    onclick={selectAll}
+                    class="px-3 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/80 transition-colors"
+                    disabled={allSelected}
+                >
+                    Select All
+                </button>
+                <button
+                    onclick={selectNone}
+                    class="px-3 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
+                    disabled={selectedCount === 0}
+                >
+                    Clear
+                </button>
+            </div>
+        </div>
+    {/if}
+
     <!-- Sites List -->
-    <div class="space-y-3 h-[450px] overflow-y-auto pr-2 pb-8">
+    <div class="space-y-3 h-[400px] overflow-y-auto pr-4 pb-8 -mr-2">
         {#each sites as site, index}
-            <div class="group bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm hover:shadow-md transition-all duration-200">
+            <div
+                class="group bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+            >
                 <div class="p-4">
                     {#if editingUrl === index}
                         <!-- Editing mode -->
                         <div class="space-y-3">
                             <div>
-                                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                                <!-- svelte-ignore a11y_label_has_associated_control -->
+                                <label
+                                    class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1"
+                                >
                                     Title
                                 </label>
                                 <input
@@ -265,7 +426,10 @@
                                 />
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                                <!-- svelte-ignore a11y_label_has_associated_control -->
+                                <label
+                                    class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1"
+                                >
                                     URL
                                 </label>
                                 <input
@@ -275,14 +439,14 @@
                                 />
                             </div>
                             <div class="flex items-center gap-2">
-                                <button 
+                                <button
                                     onclick={() => handleSaveEdit(index)}
                                     class="flex items-center gap-1 px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md hover:bg-green-100 dark:hover:bg-green-900/80 transition-colors"
                                 >
                                     <Check size={14} />
                                     Save
                                 </button>
-                                <button 
+                                <button
                                     onclick={cancelEditUrl}
                                     class="flex items-center gap-1 px-3 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors"
                                 >
@@ -293,25 +457,43 @@
                         </div>
                     {:else}
                         <!-- Display mode -->
-                        <div class="flex items-center gap-2">
-                            <div class="w-2 h-2 bg-neutral-400 dark:bg-neutral-500 rounded-full flex-shrink-0"></div>
+                        <div class="flex items-center gap-3">
+                            <label class="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedSites.has(index)}
+                                    onchange={() => toggleSiteSelection(index)}
+                                    class="w-4 h-4 text-blue-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-2"
+                                />
+                            </label>
+                            <!-- <div
+                                class="w-2 h-2 bg-neutral-400 dark:bg-neutral-500 rounded-full flex-shrink-0"
+                            ></div> -->
                             <div class="flex-1 min-w-0">
-                                <div class="font-medium text-neutral-900 dark:text-neutral-100 truncate" title={site.title}>
+                                <div
+                                    class="font-medium text-neutral-900 dark:text-neutral-100 truncate"
+                                    title={site.title}
+                                >
                                     {site.title}
                                 </div>
-                                <div class="text-sm text-neutral-500 dark:text-neutral-400 truncate" title={site.url}>
+                                <div
+                                    class="text-sm text-neutral-500 dark:text-neutral-400 truncate"
+                                    title={site.url}
+                                >
                                     {site.url}
                                 </div>
                             </div>
-                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button 
+                            <div
+                                class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <button
                                     onclick={() => startEditUrl(index)}
                                     class="p-2 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                                     title="Edit site"
                                 >
-                                    <Edit3 size={16} />
+                                    <PencilLine size={16} />
                                 </button>
-                                <button 
+                                <button
                                     onclick={() => handleRemoveSite(index)}
                                     class="p-2 text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                     title="Remove site"
@@ -327,11 +509,20 @@
 
         <!-- Add Site Form -->
         {#if showAddForm}
-            <div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm">
+            <div
+                class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm"
+            >
                 <div class="p-4 space-y-3">
-                    <h3 class="font-medium text-neutral-900 dark:text-neutral-100">Add New Site</h3>
+                    <h3
+                        class="font-medium text-neutral-900 dark:text-neutral-100"
+                    >
+                        Add New Site
+                    </h3>
                     <div>
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                        <!-- svelte-ignore a11y_label_has_associated_control -->
+                        <label
+                            class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1"
+                        >
                             Title
                         </label>
                         <input
@@ -339,13 +530,16 @@
                             class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="Site title"
                             onkeydown={(e) => {
-                                if (e.key === 'Enter') handleAddSite();
-                                if (e.key === 'Escape') cancelAddSite();
+                                if (e.key === "Enter") handleAddSite();
+                                if (e.key === "Escape") cancelAddSite();
                             }}
                         />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                        <!-- svelte-ignore a11y_label_has_associated_control -->
+                        <label
+                            class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1"
+                        >
                             URL
                         </label>
                         <input
@@ -353,20 +547,20 @@
                             class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="https://example.com"
                             onkeydown={(e) => {
-                                if (e.key === 'Enter') handleAddSite();
-                                if (e.key === 'Escape') cancelAddSite();
+                                if (e.key === "Enter") handleAddSite();
+                                if (e.key === "Escape") cancelAddSite();
                             }}
                         />
                     </div>
                     <div class="flex items-center gap-2">
-                        <button 
+                        <button
                             onclick={handleAddSite}
                             class="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/80 transition-colors"
                         >
                             <Plus size={14} />
                             Add Site
                         </button>
-                        <button 
+                        <button
                             onclick={cancelAddSite}
                             class="flex items-center gap-1 px-3 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors"
                         >
@@ -379,10 +573,12 @@
         {:else}
             <!-- Add Site Button -->
             <button
-                onclick={() => showAddForm = true}
-                class="w-full p-4 bg-white dark:bg-neutral-800 border border-dashed border-neutral-300 dark:border-neutral-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all duration-200"
+                onclick={() => (showAddForm = true)}
+                class="w-full p-4 bg-white dark:bg-neutral-800 border border-dashed border-neutral-300 dark:border-neutral-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all duration-200 mb-12"
             >
-                <div class="flex items-center justify-center gap-2 text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400">
+                <div
+                    class="flex items-center justify-center gap-2 text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400"
+                >
                     <Plus size={20} />
                     <span class="font-medium">Add New Site</span>
                 </div>
@@ -390,3 +586,85 @@
         {/if}
     </div>
 </div>
+
+<!-- Config Modal Placeholder (Future Implementation) -->
+{#if showConfigModal}
+    <div
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    >
+        <div
+            class="bg-white dark:bg-neutral-800 rounded-lg p-6 max-w-md w-full mx-4"
+        >
+            <div class="flex items-center justify-between mb-4">
+                <h3
+                    class="text-lg font-semibold text-neutral-900 dark:text-neutral-100"
+                >
+                    Collection Settings
+                </h3>
+                <button
+                    onclick={() => (showConfigModal = false)}
+                    class="p-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                >
+                    <X size={20} />
+                </button>
+            </div>
+
+            <div class="space-y-4 text-neutral-600 dark:text-neutral-400">
+                <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p class="text-sm">
+                        <strong>Coming Soon:</strong> Configure default browser and
+                        mode settings for this collection.
+                    </p>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <!-- svelte-ignore a11y_label_has_associated_control -->
+                        <label class="block text-sm font-medium mb-2"
+                            >Default Browser</label
+                        >
+                        <select
+                            disabled
+                            class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-neutral-100 dark:bg-neutral-700 text-neutral-500"
+                        >
+                            <option>Chrome</option>
+                            <option>Firefox</option>
+                            <option>Safari</option>
+                            <option>Edge</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <!-- svelte-ignore a11y_label_has_associated_control -->
+                        <label class="block text-sm font-medium mb-2"
+                            >Browsing Mode</label
+                        >
+                        <select
+                            disabled
+                            class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-neutral-100 dark:bg-neutral-700 text-neutral-500"
+                        >
+                            <option>Normal</option>
+                            <option>Incognito</option>
+                            <option>Private</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 mt-6">
+                <button
+                    disabled
+                    class="px-4 py-2 bg-neutral-300 dark:bg-neutral-600 text-neutral-500 rounded-md cursor-not-allowed"
+                >
+                    Save Settings
+                </button>
+                <button
+                    onclick={() => (showConfigModal = false)}
+                    class="px-4 py-2 bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-600"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}

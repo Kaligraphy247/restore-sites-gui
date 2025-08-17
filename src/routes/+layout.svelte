@@ -2,7 +2,7 @@
   import "../app.css";
   import Sidebar from "../components/sidebar/Sidebar.svelte";
   import SidebarItem from "../components/sidebar/SidebarItem.svelte";
-  import { Folder, Settings, House, Library } from "@lucide/svelte";
+  import { Settings, House, Library } from "@lucide/svelte";
   import { Toaster } from "svelte-sonner";
   import { page } from "$app/state";
   import { fade, fly } from "svelte/transition";
@@ -46,7 +46,7 @@
           {/snippet}
         </SidebarItem>
 
-        <SidebarItem label="Collections" {collapsed} active={page.url.pathname === "/collections"} ariaLabel="Collections" href={"/collections"}>
+        <SidebarItem label="Collections" {collapsed} active={page.url.pathname.includes("/collections")} ariaLabel="Collections" href={"/collections"}>
           {#snippet icon()}
             <Library size={18} />
           {/snippet}
