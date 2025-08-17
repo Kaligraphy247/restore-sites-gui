@@ -1,5 +1,5 @@
-use crate::models::{CollectionData, CollectionRecord, SaveCollectionRequest, SiteEntry};
-use crate::services::{BrowserService, CollectionService};
+use crate::models::{BrowserProfile, BrowserMode, CollectionData, CollectionRecord, SaveCollectionRequest, SiteEntry};
+use crate::services::{BrowserService, CollectionService, ProfileService};
 use chrono::Utc;
 use tracing::{info, instrument};
 
@@ -162,6 +162,204 @@ pub fn delete_collection(id: u64) -> Result<bool, String> {
         },
         Err(e) => {
             tracing::error!("Failed to initialize collection service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+// Browser Profile Management Commands
+
+#[tauri::command]
+#[instrument(skip(profile))]
+pub fn create_browser_profile(profile: BrowserProfile) -> Result<BrowserProfile, String> {
+    info!("Creating browser profile: {}", profile.id);
+
+    match ProfileService::new() {
+        Ok(service) => match service.create_profile(profile) {
+            Ok(created_profile) => {
+                info!("Browser profile created successfully: {}", created_profile.id);
+                Ok(created_profile)
+            }
+            Err(e) => {
+                tracing::error!("Failed to create browser profile: {}", e);
+                Err(format!("Failed to create browser profile: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize profile service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument]
+pub fn get_browser_profiles() -> Result<Vec<BrowserProfile>, String> {
+    info!("Loading all browser profiles");
+
+    match ProfileService::new() {
+        Ok(service) => match service.get_all_profiles() {
+            Ok(profiles) => {
+                info!("Loaded {} browser profiles", profiles.len());
+                Ok(profiles)
+            }
+            Err(e) => {
+                tracing::error!("Failed to load browser profiles: {}", e);
+                Err(format!("Failed to load browser profiles: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize profile service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument]
+pub fn get_browser_profile(id: String) -> Result<Option<BrowserProfile>, String> {
+    info!("Getting browser profile with ID: {}", id);
+
+    match ProfileService::new() {
+        Ok(service) => match service.get_profile(&id) {
+            Ok(profile) => {
+                if profile.is_some() {
+                    info!("Browser profile found with ID: {}", id);
+                } else {
+                    info!("Browser profile not found with ID: {}", id);
+                }
+                Ok(profile)
+            }
+            Err(e) => {
+                tracing::error!("Failed to get browser profile: {}", e);
+                Err(format!("Failed to get browser profile: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize profile service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument(skip(profile))]
+pub fn update_browser_profile(id: String, profile: BrowserProfile) -> Result<BrowserProfile, String> {
+    info!("Updating browser profile with ID: {}", id);
+
+    match ProfileService::new() {
+        Ok(service) => match service.update_profile(&id, profile) {
+            Ok(updated_profile) => {
+                info!("Browser profile updated successfully: {}", id);
+                Ok(updated_profile)
+            }
+            Err(e) => {
+                tracing::error!("Failed to update browser profile: {}", e);
+                Err(format!("Failed to update browser profile: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize profile service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument]
+pub fn delete_browser_profile(id: String) -> Result<bool, String> {
+    info!("Deleting browser profile with ID: {}", id);
+
+    match ProfileService::new() {
+        Ok(service) => match service.delete_profile(&id) {
+            Ok(deleted) => {
+                if deleted {
+                    info!("Browser profile deleted successfully: {}", id);
+                } else {
+                    info!("Browser profile not found for deletion: {}", id);
+                }
+                Ok(deleted)
+            }
+            Err(e) => {
+                tracing::error!("Failed to delete browser profile: {}", e);
+                Err(format!("Failed to delete browser profile: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize profile service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+// Browser Detection Commands
+
+#[tauri::command]
+#[instrument]
+pub fn check_browser_detection() -> Result<Vec<BrowserProfile>, String> {
+    info!("Checking browser detection status for all profiles");
+
+    match ProfileService::new() {
+        Ok(service) => match service.update_all_detection_status() {
+            Ok(profiles) => {
+                info!("Browser detection check completed for {} profiles", profiles.len());
+                Ok(profiles)
+            }
+            Err(e) => {
+                tracing::error!("Failed to check browser detection: {}", e);
+                Err(format!("Failed to check browser detection: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize profile service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+// Default Browser Mode Management
+
+#[tauri::command]
+#[instrument]
+pub fn get_default_browser_mode() -> Result<BrowserMode, String> {
+    info!("Getting default browser mode");
+
+    match ProfileService::new() {
+        Ok(service) => match service.get_default_browser_mode() {
+            Ok(mode) => {
+                info!("Default browser mode: {:?}", mode);
+                Ok(mode)
+            }
+            Err(e) => {
+                tracing::error!("Failed to get default browser mode: {}", e);
+                Err(format!("Failed to get default browser mode: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize profile service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument]
+pub fn set_default_browser_mode(mode: BrowserMode) -> Result<(), String> {
+    info!("Setting default browser mode to: {:?}", mode);
+
+    match ProfileService::new() {
+        Ok(service) => match service.set_default_browser_mode(mode) {
+            Ok(_) => {
+                info!("Default browser mode updated successfully");
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("Failed to set default browser mode: {}", e);
+                Err(format!("Failed to set default browser mode: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize profile service: {}", e);
             Err(format!("Failed to initialize service: {}", e))
         }
     }

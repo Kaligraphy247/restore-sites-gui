@@ -28,7 +28,18 @@ pub fn run() {
             commands::restore_collection,
             commands::get_collection,
             commands::update_collection,
-            commands::delete_collection
+            commands::delete_collection,
+            // Browser Profile Management
+            commands::create_browser_profile,
+            commands::get_browser_profiles,
+            commands::get_browser_profile,
+            commands::update_browser_profile,
+            commands::delete_browser_profile,
+            // Browser Detection
+            commands::check_browser_detection,
+            // Default Browser Mode Management
+            commands::get_default_browser_mode,
+            commands::set_default_browser_mode
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -308,6 +308,43 @@ impl ProfileService {
             custom_path: None,
         })
     }
+
+    // Public methods for database operations (used by commands)
+    
+    #[instrument(skip(self, profile))]
+    pub fn create_profile(&self, profile: BrowserProfile) -> Result<BrowserProfile, Box<dyn std::error::Error>> {
+        self.db.create_profile(profile)
+    }
+    
+    #[instrument(skip(self))]
+    pub fn get_all_profiles(&self) -> Result<Vec<BrowserProfile>, Box<dyn std::error::Error>> {
+        self.db.get_all_profiles()
+    }
+    
+    #[instrument(skip(self))]
+    pub fn get_profile(&self, id: &str) -> Result<Option<BrowserProfile>, Box<dyn std::error::Error>> {
+        self.db.get_profile(id)
+    }
+    
+    #[instrument(skip(self, profile))]
+    pub fn update_profile(&self, id: &str, profile: BrowserProfile) -> Result<BrowserProfile, Box<dyn std::error::Error>> {
+        self.db.update_profile(id, profile)
+    }
+    
+    #[instrument(skip(self))]
+    pub fn delete_profile(&self, id: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        self.db.delete_profile(id)
+    }
+    
+    #[instrument(skip(self))]
+    pub fn get_default_browser_mode(&self) -> Result<BrowserMode, Box<dyn std::error::Error>> {
+        self.db.get_default_browser_mode()
+    }
+    
+    #[instrument(skip(self))]
+    pub fn set_default_browser_mode(&self, mode: BrowserMode) -> Result<(), Box<dyn std::error::Error>> {
+        self.db.set_default_browser_mode(mode)
+    }
 }
 
 // Helper struct to hold resolved browser configuration
