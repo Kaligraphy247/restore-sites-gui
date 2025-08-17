@@ -14,9 +14,6 @@
     line-height: 24px;
     font-weight: 400;
 
-    color: #0f0f0f;
-    background-color: #f6f6f6;
-
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -24,9 +21,26 @@
     -webkit-text-size-adjust: 100%;
 }
 
+:root {
+    @apply text-neutral-900 bg-white;
+}
+
+html,
+body {
+    background-color: inherit;
+    color: inherit;
+}
+
+.dark {
+    color-scheme: dark;
+}
+
+.dark:root {
+    @apply text-neutral-50 bg-neutral-900;
+}
+
 @media (prefers-color-scheme: dark) {
     :root {
-        color: #f6f6f6;
-        background-color: #2f2f2f;
+        @apply text-neutral-50 bg-neutral-900;
     }
 }
