@@ -113,8 +113,9 @@ export async function saveCollection(
   config?: Partial<CollectionConfig>,
 ): Promise<CollectionData> {
   const fullConfig: CollectionConfig = {
-    browser: config?.browser || "Chrome",
-    mode: config?.mode || "Incognito",
+    browser_profile_id: config?.browser_profile_id,
+    browser: config?.browser,
+    mode: config?.mode,
     custom_path: config?.custom_path,
   };
 
@@ -143,8 +144,9 @@ export async function updateCollection(
   config?: Partial<CollectionConfig>,
 ): Promise<CollectionRecord> {
   const fullConfig: CollectionConfig = {
-    browser: config?.browser || "Chrome",
-    mode: config?.mode || "Incognito",
+    browser_profile_id: config?.browser_profile_id,
+    browser: config?.browser,
+    mode: config?.mode,
     custom_path: config?.custom_path,
   };
 

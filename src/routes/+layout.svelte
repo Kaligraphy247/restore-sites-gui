@@ -55,7 +55,7 @@
     {/snippet}
 
     {#snippet footer({ collapsed }: { collapsed: boolean })}
-      <SidebarItem label="Settings" {collapsed} ariaLabel="Settings">
+      <SidebarItem label="Settings" {collapsed} active={page.url.pathname === "/settings"} ariaLabel="Settings" href={"/settings"}>
         {#snippet icon()}
           <Settings size={18} />
         {/snippet}
