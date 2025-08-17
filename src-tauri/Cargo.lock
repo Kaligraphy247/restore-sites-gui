@@ -3010,13 +3010,16 @@ name = "restore-sites-gui"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "dirs",
  "serde",
  "serde_json",
+ "shlex",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
  "tracing",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]

@@ -1,0 +1,90 @@
+use crate::models::{CollectionData, SaveCollectionRequest, SiteEntry, CollectionConfig};
+use crate::services::{CollectionService, BrowserService};
+use chrono::Utc;
+use tracing::{info, instrument};
+
+#[tauri::command]
+#[instrument]
+pub fn greet(name: &str) -> String {
+    info!("Greeting user: {}", name);
+    format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+#[instrument(skip(request), fields(site_count = request.sites.len()))]
+pub fn save_collection(request: SaveCollectionRequest) -> Result<CollectionData, String> {
+    info!("Starting collection save operation");
+    
+    let collection_data = CollectionData {
+        sites: request.sites,
+        created_at: Utc::now(),
+        name: None, // Could be set later
+        config: CollectionConfig::default(), // Default to Chrome incognito
+    };
+    
+    match CollectionService::new() {
+        Ok(service) => {
+            match service.save_collection(collection_data.clone()) {
+                Ok(_) => {
+                    info!("Collection saved successfully");
+                    Ok(collection_data)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to save collection: {}", e);
+                    Err(format!("Failed to save collection: {}", e))
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to initialize collection service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument]
+pub fn load_collections() -> Result<Vec<CollectionData>, String> {
+    info!("Loading all collections");
+    
+    match CollectionService::new() {
+        Ok(service) => {
+            match service.load_all_collections() {
+                Ok(records) => {
+                    let collections: Vec<CollectionData> = records.into_iter().map(|record| CollectionData {
+                        sites: record.sites,
+                        created_at: record.created_at,
+                        name: Some(record.name),
+                        config: record.config,
+                    }).collect();
+                    Ok(collections)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to load collections: {}", e);
+                    Err(format!("Failed to load collections: {}", e))
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to initialize collection service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument(skip(sites), fields(url_count = sites.len()))]
+pub fn restore_collection(sites: Vec<SiteEntry>) -> Result<(), String> {
+    info!("Restoring collection with {} URLs", sites.len());
+    
+    match BrowserService::restore_sites(sites) {
+        Ok(_) => {
+            info!("Successfully restored all sites");
+            Ok(())
+        }
+        Err(e) => {
+            tracing::error!("Failed to restore sites: {}", e);
+            Err(format!("Failed to restore sites: {}", e))
+        }
+    }
+}
