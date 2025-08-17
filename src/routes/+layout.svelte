@@ -3,8 +3,13 @@
   import Sidebar from "../components/sidebar/Sidebar.svelte";
   import SidebarItem from "../components/sidebar/SidebarItem.svelte";
   import { Folder, Settings, House } from "@lucide/svelte";
+  import { Toaster } from "svelte-sonner";
   let { children } = $props();
 </script>
+
+<!-- Toast -->
+<Toaster />
+<!-- Toast -->
 
 <div class="flex h-screen w-screen bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-50">
   <Sidebar ariaLabel="Main navigation" ontoggle={(collapsed: boolean) => console.log('Sidebar toggled:', collapsed)}>
