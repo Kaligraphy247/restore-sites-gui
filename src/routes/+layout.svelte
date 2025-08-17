@@ -46,7 +46,7 @@
           {/snippet}
         </SidebarItem>
 
-        <SidebarItem label="Projects" {collapsed} active={page.url.pathname === "/collections"} ariaLabel="Projects" href={"/collections"}>
+        <SidebarItem label="Collections" {collapsed} active={page.url.pathname === "/collections"} ariaLabel="Collections" href={"/collections"}>
           {#snippet icon()}
             <Library size={18} />
           {/snippet}

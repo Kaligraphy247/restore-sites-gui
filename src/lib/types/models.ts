@@ -23,17 +23,14 @@ export interface CollectionConfig {
   custom_path?: string;
 }
 
-export type Browser = 
-  | "Chrome" 
-  | "Firefox" 
-  | "Safari" 
-  | "Edge" 
+export type Browser =
+  | "Chrome"
+  | "Firefox"
+  | "Safari"
+  | "Edge"
   | { Custom: string };
 
-export type BrowserMode = 
-  | "Normal" 
-  | "Incognito" 
-  | "Private";
+export type BrowserMode = "Normal" | "Incognito" | "Private";
 
 // JSON Database Schema Types
 export interface DatabaseMeta {
@@ -79,15 +76,19 @@ export function isBrowser(value: unknown): value is Browser {
 }
 
 export function isBrowserMode(value: unknown): value is BrowserMode {
-  return typeof value === "string" && 
-         ["Normal", "Incognito", "Private"].includes(value);
+  return (
+    typeof value === "string" &&
+    ["Normal", "Incognito", "Private"].includes(value)
+  );
 }
 
 export function isSiteEntry(value: unknown): value is SiteEntry {
-  return typeof value === "object" && 
-         value !== null && 
-         typeof (value as any).title === "string" && 
-         typeof (value as any).url === "string";
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as any).title === "string" &&
+    typeof (value as any).url === "string"
+  );
 }
 
 // Default values that match Rust defaults
@@ -101,7 +102,7 @@ export const DEFAULT_COLLECTION_CONFIG: CollectionConfig = {
 export function createCollectionConfig(
   browser: Browser = "Chrome",
   mode: BrowserMode = "Incognito",
-  custom_path?: string
+  custom_path?: string,
 ): CollectionConfig {
   return {
     browser,
@@ -112,7 +113,7 @@ export function createCollectionConfig(
 
 export function createSaveCollectionRequest(
   sites: SiteEntry[],
-  config: CollectionConfig = DEFAULT_COLLECTION_CONFIG
+  config: CollectionConfig = DEFAULT_COLLECTION_CONFIG,
 ): SaveCollectionRequest & { config: CollectionConfig } {
   return {
     sites,

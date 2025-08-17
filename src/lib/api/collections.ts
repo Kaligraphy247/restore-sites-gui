@@ -1,11 +1,12 @@
 // Typed Tauri API wrapper for collection operations
 
 import { invoke } from "@tauri-apps/api/core";
-import type { 
-  CollectionData, 
-  SaveCollectionRequest, 
+import type {
+  CollectionData,
+  SaveCollectionRequest,
   SiteEntry,
-  CollectionConfig
+  CollectionConfig,
+  CollectionRecord,
 } from "$lib/types/models";
 import { DEFAULT_COLLECTION_CONFIG } from "$lib/types/models";
 
@@ -13,13 +14,15 @@ export class CollectionAPI {
   /**
    * Save a new collection to the database
    */
-  static async saveCollection(request: SaveCollectionRequest): Promise<CollectionData> {
+  static async saveCollection(
+    request: SaveCollectionRequest,
+  ): Promise<CollectionData> {
     try {
-      const result = await invoke<CollectionData>("save_collection", { 
+      const result = await invoke<CollectionData>("save_collection", {
         request: {
           sites: request.sites,
-          config: request.config || DEFAULT_COLLECTION_CONFIG
-        }
+          config: request.config || DEFAULT_COLLECTION_CONFIG,
+        },
       });
       return result;
     } catch (error) {
@@ -30,9 +33,9 @@ export class CollectionAPI {
   /**
    * Load all collections from the database
    */
-  static async loadCollections(): Promise<CollectionData[]> {
+  static async loadCollections(): Promise<CollectionRecord[]> {
     try {
-      const result = await invoke<CollectionData[]>("load_collections");
+      const result = await invoke<CollectionRecord[]>("load_collections");
       return result;
     } catch (error) {
       throw new Error(`Failed to load collections: ${error}`);
@@ -64,8 +67,8 @@ export class CollectionAPI {
 
 // Convenience functions with better ergonomics
 export async function saveCollection(
-  sites: SiteEntry[], 
-  config?: Partial<CollectionConfig>
+  sites: SiteEntry[],
+  config?: Partial<CollectionConfig>,
 ): Promise<CollectionData> {
   const fullConfig: CollectionConfig = {
     browser: config?.browser || "Chrome",
@@ -73,13 +76,13 @@ export async function saveCollection(
     custom_path: config?.custom_path,
   };
 
-  return CollectionAPI.saveCollection({ 
-    sites, 
-    config: fullConfig 
+  return CollectionAPI.saveCollection({
+    sites,
+    config: fullConfig,
   });
 }
 
-export async function loadCollections(): Promise<CollectionData[]> {
+export async function loadCollections(): Promise<CollectionRecord[]> {
   return CollectionAPI.loadCollections();
 }
 

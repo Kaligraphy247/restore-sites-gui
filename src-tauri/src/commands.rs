@@ -1,5 +1,5 @@
-use crate::models::{CollectionData, SaveCollectionRequest, SiteEntry};
-use crate::services::{CollectionService, BrowserService};
+use crate::models::{CollectionData, CollectionRecord, SaveCollectionRequest, SiteEntry};
+use crate::services::{BrowserService, CollectionService};
 use chrono::Utc;
 use tracing::{info, instrument};
 
@@ -14,27 +14,25 @@ pub fn greet(name: &str) -> String {
 #[instrument(skip(request), fields(site_count = request.sites.len()))]
 pub fn save_collection(request: SaveCollectionRequest) -> Result<CollectionData, String> {
     info!("Starting collection save operation");
-    
+
     let collection_data = CollectionData {
         sites: request.sites,
         created_at: Utc::now(),
-        name: None, // Could be set later
+        name: None,                                 // Could be set later
         config: request.config.unwrap_or_default(), // Use provided config or default
     };
-    
+
     match CollectionService::new() {
-        Ok(service) => {
-            match service.save_collection(collection_data.clone()) {
-                Ok(_) => {
-                    info!("Collection saved successfully");
-                    Ok(collection_data)
-                }
-                Err(e) => {
-                    tracing::error!("Failed to save collection: {}", e);
-                    Err(format!("Failed to save collection: {}", e))
-                }
+        Ok(service) => match service.save_collection(collection_data.clone()) {
+            Ok(_) => {
+                info!("Collection saved successfully");
+                Ok(collection_data)
             }
-        }
+            Err(e) => {
+                tracing::error!("Failed to save collection: {}", e);
+                Err(format!("Failed to save collection: {}", e))
+            }
+        },
         Err(e) => {
             tracing::error!("Failed to initialize collection service: {}", e);
             Err(format!("Failed to initialize service: {}", e))
@@ -44,27 +42,30 @@ pub fn save_collection(request: SaveCollectionRequest) -> Result<CollectionData,
 
 #[tauri::command]
 #[instrument]
-pub fn load_collections() -> Result<Vec<CollectionData>, String> {
+pub fn load_collections() -> Result<Vec<CollectionRecord>, String> {
     info!("Loading all collections");
-    
+
     match CollectionService::new() {
-        Ok(service) => {
-            match service.load_all_collections() {
-                Ok(records) => {
-                    let collections: Vec<CollectionData> = records.into_iter().map(|record| CollectionData {
+        Ok(service) => match service.load_all_collections() {
+            Ok(records) => {
+                let collections: Vec<CollectionRecord> = records
+                    .into_iter()
+                    .map(|record| CollectionRecord {
+                        id: record.id,
                         sites: record.sites,
                         created_at: record.created_at,
-                        name: Some(record.name),
+                        updated_at: record.updated_at,
+                        name: record.name,
                         config: record.config,
-                    }).collect();
-                    Ok(collections)
-                }
-                Err(e) => {
-                    tracing::error!("Failed to load collections: {}", e);
-                    Err(format!("Failed to load collections: {}", e))
-                }
+                    })
+                    .collect();
+                Ok(collections)
             }
-        }
+            Err(e) => {
+                tracing::error!("Failed to load collections: {}", e);
+                Err(format!("Failed to load collections: {}", e))
+            }
+        },
         Err(e) => {
             tracing::error!("Failed to initialize collection service: {}", e);
             Err(format!("Failed to initialize service: {}", e))
@@ -76,7 +77,7 @@ pub fn load_collections() -> Result<Vec<CollectionData>, String> {
 #[instrument(skip(sites), fields(url_count = sites.len()))]
 pub fn restore_collection(sites: Vec<SiteEntry>) -> Result<(), String> {
     info!("Restoring collection with {} URLs", sites.len());
-    
+
     match BrowserService::restore_sites(sites) {
         Ok(_) => {
             info!("Successfully restored all sites");
