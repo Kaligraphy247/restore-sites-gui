@@ -271,7 +271,7 @@
 
     async function confirmDeleteCollection() {
         showDeleteDialog = false;
-        
+
         try {
             await deleteCollection(collection.id);
             toast.success("Collection deleted");
@@ -394,11 +394,16 @@
                 <div
                     class="flex items-center gap-4 mt-1 text-sm text-neutral-500 dark:text-neutral-400"
                 >
-                    <div class="flex items-center gap-1">
+                    <div
+                        class="flex items-center gap-1 hover:cursor-pointer"
+                        title={`${new Date(collection.created_at).toDateString()} @ ${new Date(
+                            collection.created_at,
+                        ).toLocaleTimeString()}`}
+                    >
                         <Calendar size={14} />
-                        {new Date(collection.created_at).toLocaleDateString()}
+                        {new Date(collection.created_at).toDateString()}
                     </div>
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-1 hover:cursor-pointer">
                         <Globe size={14} />
                         {sites.length} site{sites.length !== 1 ? "s" : ""}
                     </div>
@@ -684,15 +689,20 @@
     <div class="space-y-4">
         <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
             <div class="flex items-start gap-3">
-                <div class="w-5 h-5 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div
+                    class="w-5 h-5 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                >
                     <Trash2 size={12} class="text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                    <p class="text-sm text-red-800 dark:text-red-200 font-medium">
+                    <p
+                        class="text-sm text-red-800 dark:text-red-200 font-medium"
+                    >
                         You are about to delete "{collection.name}"
                     </p>
                     <p class="text-xs text-red-700 dark:text-red-300 mt-1">
-                        This collection contains {collection.sites.length} sites. Once deleted, this data cannot be recovered.
+                        This collection contains {collection.sites.length} sites.
+                        Once deleted, this data cannot be recovered.
                     </p>
                 </div>
             </div>
