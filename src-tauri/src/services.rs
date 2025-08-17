@@ -400,108 +400,171 @@ impl BrowserService {
         url: &str,
         config: &ResolvedBrowserConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let quoted_url = shlex::try_quote(url).unwrap_or_else(|_| url.into());
+        // Clean the URL but don't add extra quoting - let the OS handle it
+        let clean_url = url.trim();
 
         #[cfg(target_os = "macos")]
         {
-            // Mimic the Python script: open -na "Google Chrome" --args --incognito {url}
             let mut cmd = std::process::Command::new("open");
-            cmd.arg("-na");
-
-            match &config.browser {
-                Browser::Chrome => cmd.arg("Google Chrome"),
-                Browser::Firefox => cmd.arg("Firefox"),
-                Browser::Safari => cmd.arg("Safari"),
-                Browser::Edge => cmd.arg("Microsoft Edge"),
-                Browser::Custom(name) => cmd.arg(name),
-            };
-
-            cmd.arg("--args");
-
-            match config.mode {
-                BrowserMode::Incognito => {
-                    if matches!(config.browser, Browser::Chrome) {
-                        cmd.arg("--incognito");
-                    } else if matches!(config.browser, Browser::Firefox) {
-                        cmd.arg("--private-window");
-                    }
-                }
-                BrowserMode::Private => {
-                    if matches!(config.browser, Browser::Safari) {
-                        cmd.arg("--private");
-                    } else if matches!(config.browser, Browser::Firefox) {
-                        cmd.arg("--private-window");
-                    }
-                }
-                BrowserMode::Normal => {}
+            
+            // For Normal mode, use default browser behavior (don't force new instance)
+            // For Incognito/Private mode, use new instance to ensure mode is respected
+            let use_new_instance = !matches!(config.mode, BrowserMode::Normal);
+            
+            if use_new_instance {
+                cmd.arg("-na");
+            } else {
+                cmd.arg("-a");
             }
 
-            cmd.arg(&quoted_url.to_string());
+            let app_name = match &config.browser {
+                Browser::Chrome => "Google Chrome",
+                Browser::Firefox => "Firefox", 
+                Browser::Safari => "Safari",
+                Browser::Edge => "Microsoft Edge",
+                Browser::Custom(path) => {
+                    // Handle custom path - could be full path or app name
+                    if config.custom_path.is_some() {
+                        config.custom_path.as_ref().unwrap()
+                    } else {
+                        path
+                    }
+                },
+            };
+            
+            cmd.arg(app_name);
+
+            // Only add browser-specific args for non-Normal modes or when using new instance
+            if use_new_instance || config.custom_path.is_some() {
+                cmd.arg("--args");
+                
+                match config.mode {
+                    BrowserMode::Incognito => {
+                        if matches!(config.browser, Browser::Chrome) {
+                            cmd.arg("--incognito");
+                        } else if matches!(config.browser, Browser::Firefox) {
+                            cmd.arg("--private-window");
+                        }
+                    }
+                    BrowserMode::Private => {
+                        if matches!(config.browser, Browser::Safari) {
+                            cmd.arg("--private");
+                        } else if matches!(config.browser, Browser::Firefox) {
+                            cmd.arg("--private-window");
+                        }
+                    }
+                    BrowserMode::Normal => {}
+                }
+            }
+
+            cmd.arg(clean_url);
             cmd.spawn()?;
         }
 
         #[cfg(target_os = "windows")]
         {
-            // Mimic the Python script for Windows
-            let browser_exe = match &config.browser {
-                Browser::Chrome => "chrome.exe",
-                Browser::Firefox => "firefox.exe",
-                Browser::Edge => "msedge.exe",
-                Browser::Custom(path) => path,
-                _ => "chrome.exe", // Default to Chrome
+            let browser_exe = if let Some(custom_path) = &config.custom_path {
+                custom_path
+            } else {
+                match &config.browser {
+                    Browser::Chrome => "chrome.exe",
+                    Browser::Firefox => "firefox.exe",
+                    Browser::Edge => "msedge.exe",
+                    Browser::Custom(path) => path,
+                    _ => "chrome.exe", // Default to Chrome
+                }
             };
 
-            let mut cmd = std::process::Command::new(browser_exe);
+            // Handle custom paths that might contain arguments
+            let (exe_path, args) = if browser_exe.contains(' ') {
+                let parts: Vec<&str> = browser_exe.splitn(2, ' ').collect();
+                (parts[0], Some(parts[1]))
+            } else {
+                (browser_exe, None)
+            };
 
-            match config.mode {
-                BrowserMode::Incognito => {
-                    if matches!(config.browser, Browser::Chrome | Browser::Edge) {
-                        cmd.arg("--incognito");
-                    } else if matches!(config.browser, Browser::Firefox) {
-                        cmd.arg("--private-window");
-                    }
+            let mut cmd = std::process::Command::new(exe_path);
+
+            // Add any existing arguments from custom path
+            if let Some(existing_args) = args {
+                for arg in existing_args.split_whitespace() {
+                    cmd.arg(arg);
                 }
-                BrowserMode::Private => {
-                    if matches!(config.browser, Browser::Firefox) {
-                        cmd.arg("--private-window");
-                    }
-                }
-                BrowserMode::Normal => {}
             }
 
-            cmd.arg(&quoted_url.to_string());
+            // Add mode-specific arguments (only for non-Normal mode)
+            if !matches!(config.mode, BrowserMode::Normal) {
+                match config.mode {
+                    BrowserMode::Incognito => {
+                        if matches!(config.browser, Browser::Chrome | Browser::Edge) {
+                            cmd.arg("--incognito");
+                        } else if matches!(config.browser, Browser::Firefox) {
+                            cmd.arg("--private-window");
+                        }
+                    }
+                    BrowserMode::Private => {
+                        if matches!(config.browser, Browser::Firefox) {
+                            cmd.arg("--private-window");
+                        }
+                    }
+                    BrowserMode::Normal => {}
+                }
+            }
+
+            cmd.arg(clean_url);
             cmd.spawn()?;
         }
 
         #[cfg(target_os = "linux")]
         {
-            // Mimic the Python script for Linux (using Chrome path)
-            let browser_path = match &config.browser {
-                Browser::Chrome => "/opt/google/chrome/chrome",
-                Browser::Firefox => "firefox",
-                Browser::Custom(path) => path,
-                _ => "/opt/google/chrome/chrome",
+            let browser_path = if let Some(custom_path) = &config.custom_path {
+                custom_path
+            } else {
+                match &config.browser {
+                    Browser::Chrome => "/opt/google/chrome/chrome",
+                    Browser::Firefox => "firefox",
+                    Browser::Custom(path) => path,
+                    _ => "/opt/google/chrome/chrome",
+                }
             };
 
-            let mut cmd = std::process::Command::new(browser_path);
+            // Handle custom paths that might contain arguments
+            let (exe_path, args) = if browser_path.contains(' ') {
+                let parts: Vec<&str> = browser_path.splitn(2, ' ').collect();
+                (parts[0], Some(parts[1]))
+            } else {
+                (browser_path, None)
+            };
 
-            match config.mode {
-                BrowserMode::Incognito => {
-                    if matches!(config.browser, Browser::Chrome) {
-                        cmd.arg("--incognito");
-                    } else if matches!(config.browser, Browser::Firefox) {
-                        cmd.arg("--private-window");
-                    }
+            let mut cmd = std::process::Command::new(exe_path);
+
+            // Add any existing arguments from custom path
+            if let Some(existing_args) = args {
+                for arg in existing_args.split_whitespace() {
+                    cmd.arg(arg);
                 }
-                BrowserMode::Private => {
-                    if matches!(config.browser, Browser::Firefox) {
-                        cmd.arg("--private-window");
-                    }
-                }
-                BrowserMode::Normal => {}
             }
 
-            cmd.arg(&quoted_url.to_string());
+            // Add mode-specific arguments (only for non-Normal mode)
+            if !matches!(config.mode, BrowserMode::Normal) {
+                match config.mode {
+                    BrowserMode::Incognito => {
+                        if matches!(config.browser, Browser::Chrome) {
+                            cmd.arg("--incognito");
+                        } else if matches!(config.browser, Browser::Firefox) {
+                            cmd.arg("--private-window");
+                        }
+                    }
+                    BrowserMode::Private => {
+                        if matches!(config.browser, Browser::Firefox) {
+                            cmd.arg("--private-window");
+                        }
+                    }
+                    BrowserMode::Normal => {}
+                }
+            }
+
+            cmd.arg(clean_url);
             cmd.spawn()?;
         }
 

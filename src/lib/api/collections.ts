@@ -45,9 +45,9 @@ export class CollectionAPI {
   /**
    * Restore a collection by opening all URLs in the configured browser
    */
-  static async restoreCollection(sites: SiteEntry[]): Promise<void> {
+  static async restoreCollection(sites: SiteEntry[], config?: CollectionConfig): Promise<void> {
     try {
-      await invoke<void>("restore_collection", { sites });
+      await invoke<void>("restore_collection", { sites, config });
     } catch (error) {
       throw new Error(`Failed to restore collection: ${error}`);
     }
@@ -129,8 +129,8 @@ export async function loadCollections(): Promise<CollectionRecord[]> {
   return CollectionAPI.loadCollections();
 }
 
-export async function restoreCollection(sites: SiteEntry[]): Promise<void> {
-  return CollectionAPI.restoreCollection(sites);
+export async function restoreCollection(sites: SiteEntry[], config?: CollectionConfig): Promise<void> {
+  return CollectionAPI.restoreCollection(sites, config);
 }
 
 export async function getCollection(id: number): Promise<CollectionRecord | null> {

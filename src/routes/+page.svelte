@@ -1,12 +1,44 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import { toast } from "svelte-sonner";
-    import { formatUrl } from "$lib/utils";
+    import { formatUrl, formatDate } from "$lib/utils";
     import {
         saveCollection,
         type SiteEntry,
         type CollectionData,
+        type CollectionRecord,
     } from "$lib/types";
-    import { Plus, Save, X, History } from "@lucide/svelte";
+    import { loadCollections } from "$lib/api/collections";
+    import {
+        Plus,
+        Save,
+        X,
+        History,
+        ExternalLink,
+        Clock,
+    } from "@lucide/svelte";
+
+    let sites: string = $state("");
+    let recentCollections: CollectionRecord[] = $state([]);
+    let loadingRecent = $state(false);
+
+    onMount(async () => {
+        loadingRecent = true;
+        try {
+            const collections = await loadCollections();
+            // Sort by updated_at (most recent first) and take first 3
+            recentCollections = collections
+                .sort(
+                    (a, b) =>
+                        new Date(b.updated_at).getTime() -
+                        new Date(a.updated_at).getTime(),
+                )
+                .slice(0, 3);
+        } catch (error) {
+            console.error("Failed to load recent collections:", error);
+        }
+        loadingRecent = false;
+    });
 
     async function saveSite() {
         if (sites.trim() === "") {
@@ -30,6 +62,16 @@
             console.log("Collection saved:", result);
             toast.success(`Collection saved with ${formatted.length} sites`);
             sites = "";
+
+            // Refresh recent collections after saving
+            const collections = await loadCollections();
+            recentCollections = collections
+                .sort(
+                    (a, b) =>
+                        new Date(b.updated_at).getTime() -
+                        new Date(a.updated_at).getTime(),
+                )
+                .slice(0, 3);
         } catch (error) {
             console.error("Save failed:", error);
             toast.error("Failed to save collection");
@@ -39,33 +81,103 @@
     function clearSites() {
         sites = "";
     }
-
-    let sites: string = $state("");
 </script>
 
 <div class="space-y-6">
     <!-- Recent Collections Section -->
     <div class="space-y-4">
-        <div class="flex items-center gap-2">
-            <History size={20} class="text-neutral-600 dark:text-neutral-400" />
-            <h2
-                class="font-semibold text-xl text-neutral-800 dark:text-neutral-100"
-            >
-                Recent Collections
-            </h2>
-        </div>
-        <div
-            class="bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg p-6"
-        >
-            <div class="text-center text-neutral-500 dark:text-neutral-400">
-                <div
-                    class="w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center mx-auto mb-3"
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <History
+                    size={20}
+                    class="text-neutral-600 dark:text-neutral-400"
+                />
+                <h2
+                    class="font-semibold text-xl text-neutral-800 dark:text-neutral-100"
                 >
-                    <History size={24} class="opacity-50" />
-                </div>
-                <p class="text-sm">Your recent collections will appear here</p>
+                    Recent Collections
+                </h2>
             </div>
+            {#if recentCollections.length > 0}
+                <a
+                    href="/collections"
+                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
+                >
+                    View all
+                    <ExternalLink size={14} />
+                </a>
+            {/if}
         </div>
+
+        {#if loadingRecent}
+            <div
+                class="bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg p-6"
+            >
+                <div class="text-center text-neutral-500 dark:text-neutral-400">
+                    <div
+                        class="w-6 h-6 border-2 border-neutral-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-2"
+                    ></div>
+                    <p class="text-sm">Loading recent collections...</p>
+                </div>
+            </div>
+        {:else if recentCollections.length === 0}
+            <div
+                class="bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg p-6"
+            >
+                <div class="text-center text-neutral-500 dark:text-neutral-400">
+                    <div
+                        class="w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center mx-auto mb-3"
+                    >
+                        <History size={24} class="opacity-50" />
+                    </div>
+                    <p class="text-sm">
+                        Your recent collections will appear here
+                    </p>
+                    <p class="text-xs mt-1">
+                        Create your first collection below to get started
+                    </p>
+                </div>
+            </div>
+        {:else}
+            <div class="grid gap-3">
+                {#each recentCollections as collection (collection.id)}
+                    <a href="/collections/{collection.id}" class="group">
+                        <div
+                            class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4 hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors duration-200"
+                        >
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <h3
+                                        class="font-medium text-neutral-900 dark:text-neutral-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200"
+                                    >
+                                        {collection.name}
+                                    </h3>
+                                    <div
+                                        class="flex items-center gap-4 mt-1 text-sm text-neutral-500 dark:text-neutral-400"
+                                    >
+                                        <span
+                                            >{collection.sites.length} sites</span
+                                        >
+                                        <div class="flex items-center gap-1">
+                                            <Clock size={12} />
+                                            <span
+                                                >{formatDate(
+                                                    collection.updated_at,
+                                                )}</span
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
+                                <ExternalLink
+                                    size={16}
+                                    class="text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300 transition-colors duration-200 flex-shrink-0 mt-1"
+                                />
+                            </div>
+                        </div>
+                    </a>
+                {/each}
+            </div>
+        {/if}
     </div>
 
     <!-- Add New Collection Section -->

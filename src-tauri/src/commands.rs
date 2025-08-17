@@ -1,4 +1,4 @@
-use crate::models::{BrowserProfile, BrowserMode, CollectionData, CollectionRecord, SaveCollectionRequest, SiteEntry};
+use crate::models::{BrowserProfile, BrowserMode, CollectionConfig, CollectionData, CollectionRecord, SaveCollectionRequest, SiteEntry};
 use crate::services::{BrowserService, CollectionService, ProfileService};
 use chrono::Utc;
 use tracing::{info, instrument};
@@ -75,10 +75,11 @@ pub fn load_collections() -> Result<Vec<CollectionRecord>, String> {
 
 #[tauri::command]
 #[instrument(skip(sites), fields(url_count = sites.len()))]
-pub fn restore_collection(sites: Vec<SiteEntry>) -> Result<(), String> {
+pub fn restore_collection(sites: Vec<SiteEntry>, config: Option<CollectionConfig>) -> Result<(), String> {
     info!("Restoring collection with {} URLs", sites.len());
 
-    match BrowserService::restore_sites(sites) {
+    let collection_config = config.unwrap_or_default();
+    match BrowserService::restore_sites_with_config(sites, &collection_config) {
         Ok(_) => {
             info!("Successfully restored all sites");
             Ok(())

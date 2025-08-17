@@ -282,7 +282,7 @@
 
     async function handleRestore() {
         try {
-            await restoreCollection(collection.sites);
+            await restoreCollection(collection.sites, collection.config);
             toast.success("Collection restored");
         } catch (error) {
             console.error("Failed to restore collection:", error);
@@ -300,7 +300,7 @@
             const selectedSiteEntries = sites.filter((_, index) =>
                 selectedSites.has(index),
             );
-            await restoreCollection(selectedSiteEntries);
+            await restoreCollection(selectedSiteEntries, collection.config);
             toast.success(`${selectedSites.size} sites restored`);
         } catch (error) {
             console.error("Failed to restore selected sites:", error);
