@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 use crate::database::JsonStore;
 use crate::models::{
-    Browser, BrowserMode, CollectionConfig, CollectionData, CollectionRecord, SiteEntry,
+    Browser, BrowserMode, BrowserProfile, CollectionConfig, CollectionData, CollectionRecord,
+    SiteEntry,
 };
 use chrono::Utc;
 use tracing::{info, instrument, warn};
@@ -67,7 +68,8 @@ impl CollectionService {
         collection_data: CollectionData,
     ) -> Result<CollectionRecord, Box<dyn std::error::Error>> {
         // Get existing record first
-        let existing = self.get_collection(id)?
+        let existing = self
+            .get_collection(id)?
             .ok_or_else(|| format!("Collection with id {} not found", id))?;
 
         let updated_record = CollectionRecord {
@@ -88,9 +90,229 @@ impl CollectionService {
     }
 }
 
+pub struct ProfileService {
+    db: JsonStore,
+}
+
+impl ProfileService {
+    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        let db = JsonStore::new()?;
+        Ok(Self { db })
+    }
+
+    // Browser Detection Utilities
+
+    #[instrument]
+    pub fn detect_chrome_installation() -> bool {
+        #[cfg(target_os = "macos")]
+        {
+            std::path::Path::new("/Applications/Google Chrome.app").exists()
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            // Check common Chrome installation paths
+            let paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            ];
+            paths.iter().any(|path| std::path::Path::new(path).exists())
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            // Check if Chrome is in PATH or common installation paths
+            if std::process::Command::new("which")
+                .arg("google-chrome")
+                .output()
+                .map(|output| output.status.success())
+                .unwrap_or(false)
+            {
+                return true;
+            }
+
+            let paths = [
+                "/opt/google/chrome/chrome",
+                "/usr/bin/google-chrome",
+                "/usr/bin/google-chrome-stable",
+            ];
+            paths.iter().any(|path| std::path::Path::new(path).exists())
+        }
+    }
+
+    #[instrument]
+    pub fn detect_firefox_installation() -> bool {
+        #[cfg(target_os = "macos")]
+        {
+            std::path::Path::new("/Applications/Firefox.app").exists()
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            let paths = [
+                r"C:\Program Files\Mozilla Firefox\firefox.exe",
+                r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe",
+            ];
+            paths.iter().any(|path| std::path::Path::new(path).exists())
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            if std::process::Command::new("which")
+                .arg("firefox")
+                .output()
+                .map(|output| output.status.success())
+                .unwrap_or(false)
+            {
+                return true;
+            }
+
+            let paths = [
+                "/usr/bin/firefox",
+                "/usr/bin/firefox-esr",
+                "/opt/firefox/firefox",
+            ];
+            paths.iter().any(|path| std::path::Path::new(path).exists())
+        }
+    }
+
+    #[instrument]
+    pub fn detect_safari_installation() -> bool {
+        #[cfg(target_os = "macos")]
+        {
+            std::path::Path::new("/Applications/Safari.app").exists()
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            false // Safari only available on macOS
+        }
+    }
+
+    #[instrument]
+    pub fn detect_edge_installation() -> bool {
+        #[cfg(target_os = "macos")]
+        {
+            std::path::Path::new("/Applications/Microsoft Edge.app").exists()
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            let paths = [
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            ];
+            paths.iter().any(|path| std::path::Path::new(path).exists())
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            if std::process::Command::new("which")
+                .arg("microsoft-edge")
+                .output()
+                .map(|output| output.status.success())
+                .unwrap_or(false)
+            {
+                return true;
+            }
+
+            // Check common Edge installation paths on Linux
+            let paths = ["/usr/bin/microsoft-edge", "/usr/bin/microsoft-edge-stable"];
+            paths.iter().any(|path| std::path::Path::new(path).exists())
+        }
+    }
+
+    #[instrument]
+    pub fn check_custom_path(path: &str) -> bool {
+        std::path::Path::new(path).exists()
+    }
+
+    // Update detection status for all profiles
+    #[instrument(skip(self))]
+    pub fn update_all_detection_status(
+        &self,
+    ) -> Result<Vec<BrowserProfile>, Box<dyn std::error::Error>> {
+        let mut profiles = self.db.get_all_profiles()?;
+
+        for profile in &mut profiles {
+            let is_detected = match &profile.browser {
+                Browser::Chrome => Self::detect_chrome_installation(),
+                Browser::Firefox => Self::detect_firefox_installation(),
+                Browser::Safari => Self::detect_safari_installation(),
+                Browser::Edge => Self::detect_edge_installation(),
+                Browser::Custom(path) => Self::check_custom_path(path),
+            };
+
+            if profile.is_detected != is_detected {
+                profile.is_detected = is_detected;
+                profile.updated_at = Utc::now();
+                // Update the profile in database
+                self.db.update_profile(&profile.id, profile.clone())?;
+            }
+        }
+
+        info!("Updated detection status for {} profiles", profiles.len());
+        Ok(profiles)
+    }
+
+    // Profile Resolution Logic
+    #[instrument(skip(self))]
+    pub fn resolve_browser_config(
+        &self,
+        collection_config: &CollectionConfig,
+    ) -> Result<ResolvedBrowserConfig, Box<dyn std::error::Error>> {
+        // 1. Collection profile reference
+        if let Some(profile_id) = &collection_config.browser_profile_id {
+            if let Some(profile) = self.db.get_profile(profile_id)? {
+                return Ok(ResolvedBrowserConfig {
+                    browser: profile.browser,
+                    mode: profile.mode,
+                    custom_path: profile.custom_path,
+                });
+            }
+            warn!(
+                "Profile '{}' not found, falling back to direct config",
+                profile_id
+            );
+        }
+
+        // 2. Collection direct config
+        if collection_config.browser.is_some() {
+            let browser = collection_config.browser.clone().unwrap();
+            let mode = collection_config
+                .mode
+                .clone()
+                .unwrap_or(BrowserMode::Normal);
+            return Ok(ResolvedBrowserConfig {
+                browser,
+                mode,
+                custom_path: collection_config.custom_path.clone(),
+            });
+        }
+
+        // 3. System default profile
+        let profiles = self.db.get_all_profiles()?;
+        if let Some(default_profile) = profiles.iter().find(|p| p.is_default) {
+            return Ok(ResolvedBrowserConfig {
+                browser: default_profile.browser.clone(),
+                mode: default_profile.mode.clone(),
+                custom_path: default_profile.custom_path.clone(),
+            });
+        }
+
+        // 4. Final fallback - use global default mode
+        let default_mode = self.db.get_default_browser_mode()?;
+        Ok(ResolvedBrowserConfig {
+            browser: Browser::Chrome,
+            mode: default_mode,
+            custom_path: None,
+        })
+    }
+}
+
 // Helper struct to hold resolved browser configuration
 #[derive(Debug, Clone)]
-struct ResolvedBrowserConfig {
+pub struct ResolvedBrowserConfig {
     browser: Browser,
     mode: BrowserMode,
     custom_path: Option<String>,
@@ -99,20 +321,12 @@ struct ResolvedBrowserConfig {
 pub struct BrowserService;
 
 impl BrowserService {
-    // Resolve browser configuration from collection config with fallbacks
-    fn resolve_browser_config(config: &CollectionConfig) -> ResolvedBrowserConfig {
-        // For now, use simple fallbacks until profiles system is fully implemented
-        // TODO: Add profile resolution logic here in Phase 1.3
-        
-        let browser = config.browser.clone().unwrap_or(Browser::Chrome);
-        let mode = config.mode.clone().unwrap_or(BrowserMode::Incognito);
-        let custom_path = config.custom_path.clone();
-        
-        ResolvedBrowserConfig {
-            browser,
-            mode, 
-            custom_path,
-        }
+    // Resolve browser configuration using ProfileService for full profile resolution
+    fn resolve_browser_config(
+        config: &CollectionConfig,
+    ) -> Result<ResolvedBrowserConfig, Box<dyn std::error::Error>> {
+        let profile_service = ProfileService::new()?;
+        profile_service.resolve_browser_config(config)
     }
 
     #[instrument(skip(sites))]
@@ -120,8 +334,8 @@ impl BrowserService {
         sites: Vec<SiteEntry>,
         config: &CollectionConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let resolved_config = Self::resolve_browser_config(config);
-        
+        let resolved_config = Self::resolve_browser_config(config)?;
+
         info!(
             "Starting browser restoration for {} sites with {:?} in {:?} mode",
             sites.len(),
