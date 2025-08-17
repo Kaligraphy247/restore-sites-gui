@@ -54,6 +54,48 @@ export class CollectionAPI {
   }
 
   /**
+   * Get a single collection by ID
+   */
+  static async getCollection(id: number): Promise<CollectionRecord | null> {
+    try {
+      const result = await invoke<CollectionRecord | null>("get_collection", { id });
+      return result;
+    } catch (error) {
+      throw new Error(`Failed to get collection: ${error}`);
+    }
+  }
+
+  /**
+   * Update an existing collection
+   */
+  static async updateCollection(
+    id: number,
+    collectionData: CollectionData,
+  ): Promise<CollectionRecord> {
+    try {
+      const result = await invoke<CollectionRecord>("update_collection", {
+        id,
+        collectionData,
+      });
+      return result;
+    } catch (error) {
+      throw new Error(`Failed to update collection: ${error}`);
+    }
+  }
+
+  /**
+   * Delete a collection by ID
+   */
+  static async deleteCollection(id: number): Promise<boolean> {
+    try {
+      const result = await invoke<boolean>("delete_collection", { id });
+      return result;
+    } catch (error) {
+      throw new Error(`Failed to delete collection: ${error}`);
+    }
+  }
+
+  /**
    * Test greeting command (can be removed later)
    */
   static async greet(name: string): Promise<string> {
@@ -88,4 +130,34 @@ export async function loadCollections(): Promise<CollectionRecord[]> {
 
 export async function restoreCollection(sites: SiteEntry[]): Promise<void> {
   return CollectionAPI.restoreCollection(sites);
+}
+
+export async function getCollection(id: number): Promise<CollectionRecord | null> {
+  return CollectionAPI.getCollection(id);
+}
+
+export async function updateCollection(
+  id: number,
+  sites: SiteEntry[],
+  name?: string,
+  config?: Partial<CollectionConfig>,
+): Promise<CollectionRecord> {
+  const fullConfig: CollectionConfig = {
+    browser: config?.browser || "Chrome",
+    mode: config?.mode || "Incognito",
+    custom_path: config?.custom_path,
+  };
+
+  const collectionData: CollectionData = {
+    sites,
+    name,
+    config: fullConfig,
+    created_at: new Date().toISOString(), // This will be overridden by the service
+  };
+
+  return CollectionAPI.updateCollection(id, collectionData);
+}
+
+export async function deleteCollection(id: number): Promise<boolean> {
+  return CollectionAPI.deleteCollection(id);
 }

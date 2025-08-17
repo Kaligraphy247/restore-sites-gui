@@ -103,6 +103,36 @@ impl JsonStore {
         Ok(results)
     }
 
+    #[instrument(skip(self, updated_record))]
+    pub fn update(
+        &self,
+        updated_record: CollectionRecord,
+    ) -> Result<CollectionRecord, Box<dyn std::error::Error>> {
+        let mut database = self.load()?;
+        
+        // Find and replace the record with the given ID
+        let mut found = false;
+        for record in &mut database.data {
+            if record.id == updated_record.id {
+                *record = updated_record.clone();
+                record.updated_at = Utc::now(); // Ensure updated timestamp
+                found = true;
+                break;
+            }
+        }
+
+        if !found {
+            return Err(format!("Record with ID {} not found for update", updated_record.id).into());
+        }
+
+        database.meta.last_updated = Utc::now();
+        database.meta.last_updated_id = updated_record.id;
+        self.save(&database)?;
+        
+        info!("Updated record with ID: {}", updated_record.id);
+        Ok(updated_record)
+    }
+
     #[instrument]
     pub fn delete_by_id(&self, id: u64) -> Result<bool, Box<dyn std::error::Error>> {
         let mut database = self.load()?;

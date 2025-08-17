@@ -60,6 +60,28 @@ impl CollectionService {
         self.db.search_by_name(query)
     }
 
+    #[instrument(skip(self, collection_data))]
+    pub fn update_collection(
+        &self,
+        id: u64,
+        collection_data: CollectionData,
+    ) -> Result<CollectionRecord, Box<dyn std::error::Error>> {
+        // Get existing record first
+        let existing = self.get_collection(id)?
+            .ok_or_else(|| format!("Collection with id {} not found", id))?;
+
+        let updated_record = CollectionRecord {
+            id,
+            name: collection_data.name.unwrap_or(existing.name),
+            sites: collection_data.sites,
+            config: collection_data.config,
+            created_at: existing.created_at, // Preserve original creation time
+            updated_at: Utc::now(),
+        };
+
+        self.db.update(updated_record)
+    }
+
     #[instrument(skip(self))]
     pub fn delete_collection(&self, id: u64) -> Result<bool, Box<dyn std::error::Error>> {
         self.db.delete_by_id(id)

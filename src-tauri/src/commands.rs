@@ -89,3 +89,80 @@ pub fn restore_collection(sites: Vec<SiteEntry>) -> Result<(), String> {
         }
     }
 }
+
+#[tauri::command]
+#[instrument]
+pub fn get_collection(id: u64) -> Result<Option<CollectionRecord>, String> {
+    info!("Getting collection with ID: {}", id);
+
+    match CollectionService::new() {
+        Ok(service) => match service.get_collection(id) {
+            Ok(collection) => {
+                if collection.is_some() {
+                    info!("Collection found with ID: {}", id);
+                } else {
+                    info!("Collection not found with ID: {}", id);
+                }
+                Ok(collection)
+            }
+            Err(e) => {
+                tracing::error!("Failed to get collection: {}", e);
+                Err(format!("Failed to get collection: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize collection service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument(skip(collection_data))]
+pub fn update_collection(id: u64, collection_data: CollectionData) -> Result<CollectionRecord, String> {
+    info!("Updating collection with ID: {}", id);
+
+    match CollectionService::new() {
+        Ok(service) => match service.update_collection(id, collection_data) {
+            Ok(updated_record) => {
+                info!("Collection updated successfully with ID: {}", id);
+                Ok(updated_record)
+            }
+            Err(e) => {
+                tracing::error!("Failed to update collection: {}", e);
+                Err(format!("Failed to update collection: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize collection service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument]
+pub fn delete_collection(id: u64) -> Result<bool, String> {
+    info!("Deleting collection with ID: {}", id);
+
+    match CollectionService::new() {
+        Ok(service) => match service.delete_collection(id) {
+            Ok(deleted) => {
+                if deleted {
+                    info!("Collection deleted successfully with ID: {}", id);
+                } else {
+                    info!("Collection not found for deletion with ID: {}", id);
+                }
+                Ok(deleted)
+            }
+            Err(e) => {
+                tracing::error!("Failed to delete collection: {}", e);
+                Err(format!("Failed to delete collection: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize collection service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
