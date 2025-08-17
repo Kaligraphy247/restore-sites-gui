@@ -3,11 +3,11 @@
   import { page } from "$app/stores";
   import {
     Settings,
+    CircleCheck,
     Globe,
-    CheckCircle,
-    XCircle,
+    CircleX,
     Plus,
-    Edit3,
+    PencilLine,
     Trash2,
     RefreshCw,
   } from "@lucide/svelte";
@@ -231,7 +231,7 @@
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
           >
             <Plus class="w-4 h-4" />
-            Create Profile
+            New Profile
           </button>
         </div>
       </div>
@@ -244,9 +244,9 @@
               <div class="flex items-center gap-4">
                 <div class="flex items-center gap-2">
                   {#if profile.is_detected}
-                    <CheckCircle class="w-5 h-5 text-green-500" />
+                    <CircleCheck class="w-5 h-5 text-green-500" />
                   {:else}
-                    <XCircle class="w-5 h-5 text-red-500" />
+                    <CircleX class="w-5 h-5 text-red-500" />
                   {/if}
                   <div>
                     <div class="flex items-center gap-2">
@@ -274,7 +274,7 @@
                   class="p-2 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-md transition-colors duration-200"
                   title="Edit Profile"
                 >
-                  <Edit3 class="w-4 h-4" />
+                  <PencilLine class="w-4 h-4" />
                 </button>
                 <button
                   onclick={() => deleteProfile(profile)}

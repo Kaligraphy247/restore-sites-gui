@@ -15,7 +15,8 @@
         deleteCollection,
         restoreCollection,
     } from "$lib/api/collections";
-    import type { SiteEntry, Browser, BrowserMode } from "$lib/types/models";
+    import type { SiteEntry, Browser, BrowserMode, BrowserProfile } from "$lib/types/models";
+    import { getBrowserProfiles } from "$lib/api/profiles";
     import { toast } from "svelte-sonner";
     import Dialog from "$lib/../components/Dialog.svelte";
     import SelectionControls from "$lib/../components/SelectionControls.svelte";
@@ -37,6 +38,11 @@
     let tempName = $state("");
     let tempBrowser = $state<Browser>("Chrome");
     let tempMode = $state<BrowserMode>("Incognito");
+    
+    // Browser profiles state
+    let profiles = $state<BrowserProfile[]>([]);
+    let tempProfileId = $state<string>("");
+    let useCustomConfig = $state(false);
 
     // Copy sites for editing - initialize empty first
     let sites = $state<SiteEntry[]>([]);
@@ -44,12 +50,27 @@
     // Selection state for sites
     let selectedSites = $state<Set<number>>(new Set());
 
+    // Load profiles on mount
+    $effect(() => {
+        async function loadProfiles() {
+            try {
+                profiles = await getBrowserProfiles();
+            } catch (error) {
+                console.error("Failed to load profiles:", error);
+                toast.error("Failed to load browser profiles");
+            }
+        }
+        loadProfiles();
+    });
+
     // Initialize state from collection data
     $effect(() => {
         if (collection) {
             sites = [...collection.sites];
+            tempProfileId = collection.config?.browser_profile_id || "";
             tempBrowser = collection.config?.browser || "Chrome";
             tempMode = collection.config?.mode || "Incognito";
+            useCustomConfig = !collection.config?.browser_profile_id && !!(collection.config?.browser || collection.config?.mode);
         }
     });
 
@@ -89,8 +110,10 @@
     }
 
     function openConfigDialog() {
+        tempProfileId = collection.config?.browser_profile_id || "";
         tempBrowser = collection.config?.browser || "Chrome";
         tempMode = collection.config?.mode || "Incognito";
+        useCustomConfig = !collection.config?.browser_profile_id && !!(collection.config?.browser || collection.config?.mode);
         showConfigDialog = true;
     }
 
@@ -108,15 +131,24 @@
                 created_at: collection.created_at,
             };
 
+            // Build config based on whether using profile or custom config
+            const config = useCustomConfig ? {
+                browser_profile_id: undefined,
+                browser: tempBrowser,
+                mode: tempMode,
+                custom_path: collection.config?.custom_path,
+            } : {
+                browser_profile_id: tempProfileId || undefined,
+                browser: undefined,
+                mode: undefined,
+                custom_path: collection.config?.custom_path,
+            };
+
             const updated = await updateCollection(
                 collection.id,
                 sites,
                 collection.name,
-                {
-                    browser: tempBrowser,
-                    mode: tempMode,
-                    custom_path: collection.config?.custom_path,
-                },
+                config,
             );
 
             collection = updated;
@@ -482,82 +514,116 @@
     maxWidth="lg"
 >
     <div class="space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label
-                    for="browser-select"
-                    class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-                >
-                    Default Browser
-                </label>
-                <select
-                    id="browser-select"
-                    bind:value={tempBrowser}
-                    class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                    <option value="Chrome">Chrome</option>
-                    <option value="Firefox">Firefox</option>
-                    <option value="Safari">Safari</option>
-                    <option value="Edge">Edge</option>
-                </select>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                    Browser to open links in when restoring this collection
+        <!-- Profile Selection -->
+        <div>
+            <label for="profile-select" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                Browser Profile
+            </label>
+            <select
+                id="profile-select"
+                bind:value={tempProfileId}
+                disabled={useCustomConfig}
+                class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                <option value="">No profile selected (use global defaults)</option>
+                {#each profiles as profile (profile.id)}
+                    <option value={profile.id}>
+                        {profile.is_detected ? "🟢" : "🔴"} {profile.name} ({profile.browser} • {profile.mode})
+                    </option>
+                {/each}
+            </select>
+            <div class="flex items-center justify-between mt-2">
+                <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                    🟢 Detected, 🔴 Not detected
                 </p>
-            </div>
-
-            <div>
-                <label
-                    for="mode-select"
-                    class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
+                <button
+                    onclick={() => goto("/settings")}
+                    class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
                 >
-                    Browsing Mode
-                </label>
-                <select
-                    id="mode-select"
-                    bind:value={tempMode}
-                    class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                    <option value="Normal">Normal</option>
-                    <option value="Incognito">Incognito</option>
-                    <option value="Private">Private</option>
-                </select>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                    {#if tempMode === "Normal"}
-                        Open in regular browser windows
-                    {:else if tempMode === "Incognito"}
-                        Open in incognito/private windows (Chrome/Edge)
-                    {:else}
-                        Open in private windows (Firefox/Safari)
-                    {/if}
-                </p>
+                    Manage Profiles
+                </button>
             </div>
         </div>
 
+        <!-- Custom Configuration Toggle -->
+        <div class="flex items-center">
+            <input
+                type="checkbox"
+                id="use-custom"
+                bind:checked={useCustomConfig}
+                class="w-4 h-4 text-blue-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500"
+            />
+            <label for="use-custom" class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">
+                Use custom configuration (one-time)
+            </label>
+        </div>
+
+        <!-- Custom Configuration Fields (shown when checkbox is checked) -->
+        {#if useCustomConfig}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                <div>
+                    <label
+                        for="custom-browser-select"
+                        class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
+                    >
+                        Browser
+                    </label>
+                    <select
+                        id="custom-browser-select"
+                        bind:value={tempBrowser}
+                        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="Chrome">Chrome</option>
+                        <option value="Firefox">Firefox</option>
+                        <option value="Safari">Safari</option>
+                        <option value="Edge">Edge</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label
+                        for="custom-mode-select"
+                        class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
+                    >
+                        Mode
+                    </label>
+                    <select
+                        id="custom-mode-select"
+                        bind:value={tempMode}
+                        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="Normal">Normal</option>
+                        <option value="Incognito">Incognito</option>
+                        <option value="Private">Private</option>
+                    </select>
+                </div>
+            </div>
+        {/if}
+
+        <!-- Info Box -->
         <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
             <div class="flex items-start gap-3">
-                <div
-                    class="w-5 h-5 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                >
-                    <Settings
-                        size={12}
-                        class="text-blue-600 dark:text-blue-400"
-                    />
+                <div class="w-5 h-5 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Settings size={12} class="text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                    <p
-                        class="text-sm text-blue-800 dark:text-blue-200 font-medium"
-                    >
-                        Collection-specific settings
+                    <p class="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                        Configuration Priority
                     </p>
                     <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                        These settings will be used when restoring this
-                        collection. You can override them temporarily using the
-                        restore options.
+                        {#if useCustomConfig}
+                            Using custom configuration for this collection only.
+                        {:else if tempProfileId}
+                            Using selected browser profile. If profile is missing, will fall back to global defaults.
+                        {:else}
+                            Using global default settings. Create or select a profile for consistent browser configuration.
+                        {/if}
                     </p>
                 </div>
             </div>
         </div>
 
+        <!-- Action Buttons -->
         <div class="flex items-center gap-2 pt-4">
             <button
                 onclick={handleSaveConfig}
