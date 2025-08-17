@@ -17,7 +17,7 @@
 
     let {
         defaultCollapsed = false,
-        widthExpanded = 256,
+        widthExpanded = 180,
         widthCollapsed = 64,
         persistKey = "sidebar:collapsed",
         ariaLabel = "Sidebar",
