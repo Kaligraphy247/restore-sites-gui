@@ -190,7 +190,7 @@
   <title>Settings - Restore Sites</title>
 </svelte:head>
 
-<div class="min-h-screen bg-neutral-50 dark:bg-neutral-900">
+<div class="bg-neutral-50 dark:bg-neutral-900">
   <!-- Header -->
   <div class="bg-white dark:bg-neutral-800 shadow-sm border-b border-neutral-200 dark:border-neutral-700">
     <div class="max-w-4xl mx-auto px-6 py-4">
@@ -204,15 +204,16 @@
   </div>
 
   <!-- Main Content -->
-  <div class="max-w-4xl mx-auto px-6 py-8">
+  <div class="max-w-4xl mx-auto px-6 py-8 pb-16">
     <!-- Browser Profiles Section -->
     <section class="mb-12">
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4">
         <div>
           <h2 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
             Browser Profiles
           </h2>
-          <p class="text-neutral-600 dark:text-neutral-400">
+          <p class="text-neutral-600 dark:text-neutral-400 text-xs">
+            <!-- Manage reusable browser configurations for your collections -->
             Manage reusable browser configurations for your collections
           </p>
         </div>
@@ -231,7 +232,7 @@
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
           >
             <Plus class="w-4 h-4" />
-            New Profile
+           <span>Create Profile</span>
           </button>
         </div>
       </div>

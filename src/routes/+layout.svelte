@@ -63,11 +63,11 @@
     {/snippet}
   </Sidebar>
 
-  <div class="min-w-0 flex-1 overflow-hidden">
-    <header class="h-14 border-b px-4 dark:border-neutral-800 flex items-center">
+  <div class="min-w-0 flex-1 flex flex-col overflow-hidden">
+    <header class="h-14 border-b px-4 dark:border-neutral-800 flex items-center flex-shrink-0">
       <h1 class="text-lg font-semibold">Restore Sites</h1>
     </header>
-    <main class="p-4">
+    <main class="flex-1 overflow-y-auto p-4">
       {#key currentPath}
         <div
           in:fade={{ duration: 300, delay: 150 }}
