@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::database::JsonStore;
 use crate::models::{
     Browser, BrowserMode, CollectionConfig, CollectionData, CollectionRecord, SiteEntry,

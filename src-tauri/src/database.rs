@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::models::{CollectionRecord, Database};
 use crate::utils::get_data_dir;
 use chrono::Utc;

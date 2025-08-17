@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::path::PathBuf;
 use tracing::{debug, instrument};
 
@@ -6,12 +7,11 @@ const APP_DIR_NAME: &str = ".restore-sites";
 /// Get the application data directory ($HOME/.restore-sites)
 #[instrument]
 pub fn get_data_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let home_dir = dirs::home_dir()
-        .ok_or("Could not determine home directory")?;
-    
+    let home_dir = dirs::home_dir().ok_or("Could not determine home directory")?;
+
     let data_dir = home_dir.join(APP_DIR_NAME);
     debug!("Data directory: {}", data_dir.display());
-    
+
     Ok(data_dir)
 }
 
@@ -25,18 +25,18 @@ pub fn is_valid_url(url: &str) -> bool {
 #[instrument]
 pub fn clean_url(url: &str) -> Option<String> {
     let trimmed = url.trim();
-    
+
     if trimmed.is_empty() {
         return None;
     }
-    
+
     // Add https:// if no protocol is specified
     if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
         if trimmed.starts_with("www.") || trimmed.contains('.') {
             return Some(format!("https://{}", trimmed));
         }
     }
-    
+
     if is_valid_url(trimmed) {
         Some(trimmed.to_string())
     } else {
@@ -52,7 +52,7 @@ pub fn extract_domain(url: &str) -> String {
             return host.to_string();
         }
     }
-    
+
     // Fallback: try to extract domain manually
     url.trim_start_matches("https://")
         .trim_start_matches("http://")
@@ -77,17 +77,32 @@ mod tests {
 
     #[test]
     fn test_clean_url() {
-        assert_eq!(clean_url("https://example.com"), Some("https://example.com".to_string()));
-        assert_eq!(clean_url("www.example.com"), Some("https://www.example.com".to_string()));
-        assert_eq!(clean_url("example.com"), Some("https://example.com".to_string()));
+        assert_eq!(
+            clean_url("https://example.com"),
+            Some("https://example.com".to_string())
+        );
+        assert_eq!(
+            clean_url("www.example.com"),
+            Some("https://www.example.com".to_string())
+        );
+        assert_eq!(
+            clean_url("example.com"),
+            Some("https://example.com".to_string())
+        );
         assert_eq!(clean_url(""), None);
         assert_eq!(clean_url("not-a-url"), None);
     }
 
     #[test]
     fn test_extract_domain() {
-        assert_eq!(extract_domain("https://www.example.com/path"), "www.example.com");
+        assert_eq!(
+            extract_domain("https://www.example.com/path"),
+            "www.example.com"
+        );
         assert_eq!(extract_domain("http://example.com"), "example.com");
-        assert_eq!(extract_domain("https://subdomain.example.com/path?query=1"), "subdomain.example.com");
+        assert_eq!(
+            extract_domain("https://subdomain.example.com/path?query=1"),
+            "subdomain.example.com"
+        );
     }
 }

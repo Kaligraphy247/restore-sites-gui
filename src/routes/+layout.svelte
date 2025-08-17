@@ -2,13 +2,13 @@
   import "../app.css";
   import Sidebar from "../components/sidebar/Sidebar.svelte";
   import SidebarItem from "../components/sidebar/SidebarItem.svelte";
-  import { Folder, Settings, House } from "@lucide/svelte";
+  import { Folder, Settings, House, Library } from "@lucide/svelte";
   import { Toaster } from "svelte-sonner";
   import { page } from "$app/state";
   import { fade, fly } from "svelte/transition";
   import { navigating } from "$app/stores";
   let { children } = $props();
-  
+
   // Track route changes for transitions
   let currentPath = $state(page.url.pathname);
   $effect(() => {
@@ -40,15 +40,15 @@
 
     {#snippet children({ collapsed }: { collapsed: boolean })}
       <div class="space-y-1">
-        <SidebarItem label="House" {collapsed} active={page.url.pathname === "/"} ariaLabel="House" href={"/"}>
+        <SidebarItem label="Home" {collapsed} active={page.url.pathname === "/"} ariaLabel="Home" href={"/"}>
           {#snippet icon()}
             <House size={18} />
           {/snippet}
         </SidebarItem>
 
-        <SidebarItem label="Projects" {collapsed} active={page.url.pathname === "/projects"} ariaLabel="Projects" href={"/projects"}>
+        <SidebarItem label="Projects" {collapsed} active={page.url.pathname === "/collections"} ariaLabel="Projects" href={"/collections"}>
           {#snippet icon()}
-            <Folder size={18} />
+            <Library size={18} />
           {/snippet}
         </SidebarItem>
       </div>
