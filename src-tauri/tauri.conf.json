@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "restore-sites-gui",
+        "title": "Restore Sites GUI",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "fullscreen": false,
+        "resizable": false
       }
     ],
     "security": {

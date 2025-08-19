@@ -10,10 +10,16 @@ use tracing::info;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize tracing
+    let default_level = if cfg!(debug_assertions) {
+        "restore_sites_gui_lib=debug,info"
+    } else {
+        "warn"
+    };
+    
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "restore_sites_gui_lib=debug,info".into()),
+                .unwrap_or_else(|_| default_level.into()),
         )
         .init();
 
