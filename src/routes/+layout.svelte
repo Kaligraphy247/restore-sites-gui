@@ -7,6 +7,11 @@
   import { page } from "$app/state";
   import { fade, fly } from "svelte/transition";
   import { navigating } from "$app/stores";
+  import FloatingAddButton from "../components/FloatingAddButton.svelte";
+  import CreateCollectionModal from "../components/collections/CreateCollectionModal.svelte";
+  import { saveCollection, loadCollections } from "$lib/api/collections";
+  import type { SiteEntry } from "$lib/types/models";
+  import { toast } from "svelte-sonner";
   let { children } = $props();
 
   // Track route changes for transitions
@@ -14,6 +19,37 @@
   $effect(() => {
     currentPath = page.url.pathname;
   });
+
+  // Floating add button state
+  let showCreateModal = $state(false);
+
+  function openCreateModal() {
+    showCreateModal = true;
+  }
+
+  function closeCreateModal() {
+    showCreateModal = false;
+  }
+
+  async function handleCreateCollection(name: string, sites: SiteEntry[]) {
+    try {
+      await saveCollection(sites, {
+        browser: "Chrome",
+        mode: "Incognito",
+      }, name);
+      toast.success(`Collection "${name}" created with ${sites.length} sites`);
+      showCreateModal = false;
+      
+      // If we're on the collections page, we might want to refresh
+      if (currentPath.includes('/collections')) {
+        // The collections page should handle its own refresh
+        // We could emit a custom event here if needed
+      }
+    } catch (error) {
+      console.error("Failed to create collection:", error);
+      toast.error("Failed to create collection");
+    }
+  }
 </script>
 
 <!-- Toast -->
@@ -79,4 +115,14 @@
       {/key}
     </main>
   </div>
+  
+  <!-- Floating Add Button -->
+  <FloatingAddButton onClick={openCreateModal} />
+  
+  <!-- Global Create Collection Modal -->
+  <CreateCollectionModal
+    show={showCreateModal}
+    onSave={handleCreateCollection}
+    onCancel={closeCreateModal}
+  />
 </div>

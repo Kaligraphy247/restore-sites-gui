@@ -17,7 +17,7 @@
         ExternalLink,
         Clock,
     } from "@lucide/svelte";
-    import CollectionEditModal from "$lib/components/collections/CollectionEditModal.svelte";
+    import CollectionEditModal from "../components/collections/CollectionEditModal.svelte";
 
     let sites: string = $state("");
     let recentCollections: CollectionRecord[] = $state([]);
