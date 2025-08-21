@@ -349,9 +349,9 @@
 
 <!-- Profile Create/Edit Dialog -->
 {#if showProfileDialog}
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-    <div class="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-md w-full">
-      <div class="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-2 bg-black bg-opacity-50">
+    <div class="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-700">
         <h3 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
           {editingProfile ? "Edit Profile" : "Create Profile"}
         </h3>
@@ -366,10 +366,10 @@
         </button>
       </div>
 
-      <form onsubmit={saveProfile} class="p-6 space-y-4">
+      <form onsubmit={saveProfile} class="p-4 space-y-3">
         <!-- Profile Name -->
         <div>
-          <label for="profile-name" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          <label for="profile-name" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
             Profile Name
           </label>
           <input
@@ -388,7 +388,7 @@
 
         <!-- Browser -->
         <div>
-          <label for="profile-browser" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          <label for="profile-browser" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
             Browser
           </label>
           <select
@@ -405,7 +405,7 @@
 
         <!-- Browser Mode -->
         <div>
-          <label for="profile-mode" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          <label for="profile-mode" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
             Browser Mode
           </label>
           <select
@@ -421,7 +421,7 @@
 
         <!-- Custom Path -->
         <div>
-          <label for="profile-path" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+          <label for="profile-path" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
             Custom Browser Path (Optional)
           </label>
           <input
@@ -447,7 +447,7 @@
         </div>
 
         <!-- Form Actions -->
-        <div class="flex justify-end gap-3 pt-4">
+        <div class="flex justify-end gap-3 pt-2">
           <button
             type="button"
             onclick={() => (showProfileDialog = false)}
