@@ -166,3 +166,31 @@ export async function updateCollection(
 export async function deleteCollection(id: number): Promise<boolean> {
   return CollectionAPI.deleteCollection(id);
 }
+
+// Backup and Restore
+export async function exportDatabase(): Promise<string> {
+  try {
+    return await invoke<string>("export_database");
+  } catch (error) {
+    throw new Error(`Failed to export database: ${error}`);
+  }
+}
+
+export async function exportDatabaseToFile(): Promise<string> {
+  try {
+    return await invoke<string>("export_database_to_file");
+  } catch (error) {
+    throw new Error(`Failed to export database to file: ${error}`);
+  }
+}
+
+export async function importDatabase(jsonData: string, replaceExisting: boolean = false): Promise<number> {
+  try {
+    return await invoke<number>("import_database", { 
+      jsonData, 
+      replaceExisting 
+    });
+  } catch (error) {
+    throw new Error(`Failed to import database: ${error}`);
+  }
+}

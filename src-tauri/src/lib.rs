@@ -27,6 +27,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::save_collection,
@@ -45,7 +46,11 @@ pub fn run() {
             commands::check_browser_detection,
             // Default Browser Mode Management
             commands::get_default_browser_mode,
-            commands::set_default_browser_mode
+            commands::set_default_browser_mode,
+            // Backup and Restore
+            commands::export_database,
+            commands::export_database_to_file,
+            commands::import_database
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

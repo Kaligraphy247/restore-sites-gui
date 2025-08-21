@@ -261,4 +261,59 @@ impl JsonStore {
         
         Ok(())
     }
+
+    #[instrument(skip(self))]
+    pub fn export_to_json(&self) -> Result<String, Box<dyn std::error::Error>> {
+        let database = self.load()?;
+        let json_data = serde_json::to_string_pretty(&database)?;
+        info!("Exported database to JSON, {} characters", json_data.len());
+        Ok(json_data)
+    }
+
+    #[instrument(skip(self, json_data), fields(data_length = json_data.len()))]
+    pub fn import_from_json(&self, json_data: String, replace_existing: bool) -> Result<usize, Box<dyn std::error::Error>> {
+        let import_database: Database = serde_json::from_str(&json_data)?;
+        
+        if replace_existing {
+            // Replace entire database
+            self.save(&import_database)?;
+            info!("Replaced entire database with {} collections", import_database.data.len());
+            Ok(import_database.data.len())
+        } else {
+            // Merge with existing database
+            let mut existing_database = self.load()?;
+            let mut imported_count = 0;
+            
+            for import_record in import_database.data {
+                // Check if collection with same name already exists
+                let name_exists = existing_database.data.iter().any(|existing| 
+                    existing.name.to_lowercase() == import_record.name.to_lowercase()
+                );
+                
+                if !name_exists {
+                    // Assign new ID
+                    let new_id = existing_database.meta.max_id + 1;
+                    existing_database.meta.max_id = new_id;
+                    
+                    let mut new_record = import_record;
+                    new_record.id = new_id;
+                    new_record.updated_at = Utc::now();
+                    
+                    existing_database.data.push(new_record);
+                    imported_count += 1;
+                } else {
+                    warn!("Skipping collection '{}' - name already exists", import_record.name);
+                }
+            }
+            
+            // Update metadata
+            existing_database.meta.record_count = existing_database.data.len();
+            existing_database.meta.last_updated = Utc::now();
+            existing_database.meta.last_updated_id = existing_database.meta.max_id;
+            
+            self.save(&existing_database)?;
+            info!("Merged database, imported {} new collections", imported_count);
+            Ok(imported_count)
+        }
+    }
 }

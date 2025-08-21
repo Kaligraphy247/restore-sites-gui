@@ -1,6 +1,7 @@
 use crate::models::{BrowserProfile, BrowserMode, CollectionConfig, CollectionData, CollectionRecord, SaveCollectionRequest, SiteEntry};
 use crate::services::{BrowserService, CollectionService, ProfileService};
 use chrono::Utc;
+use std::fs;
 use tracing::{info, instrument};
 
 #[tauri::command]
@@ -361,6 +362,115 @@ pub fn set_default_browser_mode(mode: BrowserMode) -> Result<(), String> {
         },
         Err(e) => {
             tracing::error!("Failed to initialize profile service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+// Backup and Restore Commands
+
+#[tauri::command]
+#[instrument]
+pub fn export_database() -> Result<String, String> {
+    info!("Exporting database to JSON");
+
+    match CollectionService::new() {
+        Ok(service) => match service.export_database() {
+            Ok(json_data) => {
+                info!("Database exported successfully, {} characters", json_data.len());
+                Ok(json_data)
+            }
+            Err(e) => {
+                tracing::error!("Failed to export database: {}", e);
+                Err(format!("Failed to export database: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize collection service: {}", e);
+            Err(format!("Failed to initialize service: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument]
+pub async fn export_database_to_file(window: tauri::Window) -> Result<String, String> {
+    info!("Exporting database to file with save dialog");
+
+    // First get the data
+    let json_data = match CollectionService::new() {
+        Ok(service) => match service.export_database() {
+            Ok(data) => data,
+            Err(e) => {
+                tracing::error!("Failed to export database: {}", e);
+                return Err(format!("Failed to export database: {}", e));
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize collection service: {}", e);
+            return Err(format!("Failed to initialize service: {}", e));
+        }
+    };
+
+    // Create filename with timestamp
+    let timestamp = Utc::now().format("%Y-%m-%dT%H-%M-%S").to_string();
+    let default_filename = format!("restore-sites-backup-{}.json", timestamp);
+
+    // Use Tauri dialog to save file
+    use tauri_plugin_dialog::DialogExt;
+    
+    let file_path = window
+        .dialog()
+        .file()
+        .set_title("Save Database Backup")
+        .set_file_name(&default_filename)
+        .add_filter("JSON files", &["json"])
+        .add_filter("All files", &["*"])
+        .blocking_save_file();
+
+    match file_path {
+        Some(path) => {
+            // Convert FilePath to PathBuf
+            let path_buf = path.as_path().unwrap();
+            
+            // Write the file
+            match fs::write(&path_buf, json_data) {
+                Ok(_) => {
+                    let path_str = path_buf.to_string_lossy().to_string();
+                    info!("Database exported successfully to: {}", path_str);
+                    Ok(path_str)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to write file: {}", e);
+                    Err(format!("Failed to write file: {}", e))
+                }
+            }
+        }
+        None => {
+            info!("Export cancelled by user");
+            Err("Export cancelled".to_string())
+        }
+    }
+}
+
+#[tauri::command]
+#[instrument(skip(json_data), fields(data_length = json_data.len()))]
+pub fn import_database(json_data: String, replace_existing: bool) -> Result<usize, String> {
+    info!("Importing database from JSON, replace_existing: {}", replace_existing);
+
+    match CollectionService::new() {
+        Ok(service) => match service.import_database(json_data, replace_existing) {
+            Ok(imported_count) => {
+                info!("Database imported successfully, {} collections imported", imported_count);
+                Ok(imported_count)
+            }
+            Err(e) => {
+                tracing::error!("Failed to import database: {}", e);
+                Err(format!("Failed to import database: {}", e))
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to initialize collection service: {}", e);
             Err(format!("Failed to initialize service: {}", e))
         }
     }

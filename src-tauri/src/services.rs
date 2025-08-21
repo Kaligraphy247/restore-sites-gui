@@ -88,6 +88,18 @@ impl CollectionService {
     pub fn delete_collection(&self, id: u64) -> Result<bool, Box<dyn std::error::Error>> {
         self.db.delete_by_id(id)
     }
+
+    #[instrument(skip(self))]
+    pub fn export_database(&self) -> Result<String, Box<dyn std::error::Error>> {
+        info!("Exporting database to JSON");
+        self.db.export_to_json()
+    }
+
+    #[instrument(skip(self, json_data), fields(data_length = json_data.len()))]
+    pub fn import_database(&self, json_data: String, replace_existing: bool) -> Result<usize, Box<dyn std::error::Error>> {
+        info!("Importing database from JSON, replace_existing: {}", replace_existing);
+        self.db.import_from_json(json_data, replace_existing)
+    }
 }
 
 pub struct ProfileService {

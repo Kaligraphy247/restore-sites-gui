@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { page } from "$app/stores";
   import {
     Settings,
     CircleCheck,
@@ -10,6 +8,8 @@
     PencilLine,
     Trash2,
     RefreshCw,
+    Download,
+    Upload,
   } from "@lucide/svelte";
   import type { PageData } from "./$types";
   import type { BrowserProfile, BrowserMode, Browser } from "$lib/types/models";
@@ -19,9 +19,9 @@
     updateBrowserProfile,
     deleteBrowserProfile,
     checkBrowserDetection,
-    getDefaultBrowserMode,
     setDefaultBrowserMode,
   } from "$lib/api/profiles";
+  import { exportDatabaseToFile } from "$lib/api/collections";
   import { toast } from "svelte-sonner";
 
   let { data }: { data: PageData } = $props();
@@ -158,6 +158,26 @@
       isLoading = false;
     }
   }
+
+  async function handleExportDatabase() {
+    isLoading = true;
+    try {
+      const filePath = await exportDatabaseToFile();
+      toast.success(`Database exported successfully to: ${filePath}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("Export cancelled")) {
+        toast.info("Export cancelled");
+      } else {
+        toast.error(`Failed to export database: ${errorMessage}`);
+      }
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  // Import function disabled for now - will be implemented later
+  // async function handleImportDatabase() { ... }
 
   function generateProfileId(name: string, browser: Browser): string {
     const browserName = typeof browser === "string" ? browser.toLowerCase() : "custom";
@@ -341,6 +361,65 @@
             <option value="Incognito">Incognito</option>
             <option value="Private">Private</option>
           </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Backup & Restore Section -->
+    <section class="mt-12">
+      <div class="mb-6">
+        <h2 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
+          Backup & Restore
+        </h2>
+        <p class="text-neutral-600 dark:text-neutral-400">
+          Export and import your collections and settings
+        </p>
+      </div>
+
+      <div class="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-6">
+        <div class="space-y-4">
+          <!-- Export Database -->
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium text-neutral-900 dark:text-neutral-100 mb-1">
+                Export Database
+              </h3>
+              <p class="text-sm text-neutral-600 dark:text-neutral-400">
+                Download a complete backup of all your collections and settings
+              </p>
+            </div>
+            <button
+              onclick={handleExportDatabase}
+              disabled={isLoading}
+              class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 whitespace-nowrap"
+            >
+              <Download class="w-4 h-4" />
+              Export
+            </button>
+          </div>
+
+          <!-- Divider -->
+          <div class="border-t border-neutral-200 dark:border-neutral-700"></div>
+
+          <!-- Import Database -->
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-medium text-neutral-900 dark:text-neutral-100 mb-1">
+                Import Database
+              </h3>
+              <p class="text-sm text-neutral-600 dark:text-neutral-400">
+                Restore from a backup file. Choose to merge or replace existing data
+              </p>
+            </div>
+            <button
+              disabled={true}
+              class="flex items-center gap-2 px-4 py-2 bg-gray-400 text-gray-600 rounded-md cursor-not-allowed grayscale opacity-50 whitespace-nowrap"
+              title="Import functionality temporarily disabled"
+            >
+              <Upload class="w-4 h-4" />
+              Import
+            </button>
+          </div>
         </div>
       </div>
     </section>
