@@ -17,10 +17,15 @@
         ExternalLink,
         Clock,
     } from "@lucide/svelte";
+    import CollectionEditModal from "$lib/components/collections/CollectionEditModal.svelte";
 
     let sites: string = $state("");
     let recentCollections: CollectionRecord[] = $state([]);
     let loadingRecent = $state(false);
+    let quickAdd = $state(true);
+    let showEditModal = $state(false);
+    let editingSites: SiteEntry[] = $state([]);
+    let collectionName = $state("");
 
     onMount(async () => {
         loadingRecent = true;
@@ -54,32 +59,85 @@
             return;
         }
 
-        try {
-            const result: CollectionData = await saveCollection(formatted, {
-                browser: "Chrome",
-                mode: "Incognito",
-            });
-            console.log("Collection saved:", result);
-            toast.success(`Collection saved with ${formatted.length} sites`);
-            sites = "";
+        if (quickAdd) {
+            // Quick save - save immediately with default settings
+            try {
+                const result: CollectionData = await saveCollection(formatted, {
+                    browser: "Chrome",
+                    mode: "Incognito",
+                });
+                console.log("Collection saved:", result);
+                toast.success(
+                    `Collection saved with ${formatted.length} sites`,
+                );
+                sites = "";
+                await refreshRecentCollections();
+            } catch (error) {
+                console.error("Save failed:", error);
+                toast.error("Failed to save collection");
+            }
+        } else {
+            // Detailed mode - open modal for editing
+            editingSites = [...formatted];
+            collectionName = "";
+            showEditModal = true;
+        }
+    }
 
-            // Refresh recent collections after saving
-            const collections = await loadCollections();
-            recentCollections = collections
-                .sort(
-                    (a, b) =>
-                        new Date(b.updated_at).getTime() -
-                        new Date(a.updated_at).getTime(),
-                )
-                .slice(0, 3);
+    async function refreshRecentCollections() {
+        const collections = await loadCollections();
+        recentCollections = collections
+            .sort(
+                (a, b) =>
+                    new Date(b.updated_at).getTime() -
+                    new Date(a.updated_at).getTime(),
+            )
+            .slice(0, 3);
+    }
+
+    function clearSites() {
+        sites = "";
+    }
+
+    async function saveEditedCollection(
+        name: string,
+        editedSites: SiteEntry[],
+    ) {
+        try {
+            const result: CollectionData = await saveCollection(
+                editedSites,
+                {
+                    browser: "Chrome",
+                    mode: "Incognito",
+                },
+                name,
+            );
+            console.log("Collection saved:", result);
+            toast.success(
+                `Collection "${name}" saved with ${editedSites.length} sites`,
+            );
+
+            // Clear form and close modal
+            sites = "";
+            showEditModal = false;
+            collectionName = "";
+            editingSites = [];
+
+            await refreshRecentCollections();
         } catch (error) {
             console.error("Save failed:", error);
             toast.error("Failed to save collection");
         }
     }
 
-    function clearSites() {
-        sites = "";
+    function cancelEditModal() {
+        showEditModal = false;
+        collectionName = "";
+        editingSites = [];
+    }
+
+    function updateCollectionName(name: string) {
+        collectionName = name;
     }
 </script>
 
@@ -206,7 +264,7 @@
                     bind:value={sites}
                     name="projects"
                     placeholder="Paste your browser tabs here. Each line should be: Title https://example.com"
-                    class="w-full h-[200px] border border-neutral-300 dark:border-neutral-600 rounded-lg px-4 py-3 resize-none bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    class="w-full h-[200px] border border-neutral-300 dark:border-neutral-600 rounded-lg px-4 py-3 resize-none bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder:text-sm"
                 ></textarea>
                 <div
                     class="flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400"
@@ -224,7 +282,37 @@
                 </div>
             </div>
 
-            <div class="flex justify-between items-center pt-2">
+            <!-- Quick Add Option -->
+            <div
+                class="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700"
+            >
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center">
+                        <input
+                            type="checkbox"
+                            bind:checked={quickAdd}
+                            id="quick-add"
+                            class="w-4 h-4 text-blue-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500"
+                        />
+                        <label
+                            for="quick-add"
+                            class="ml-2 text-sm text-neutral-700 dark:text-neutral-300"
+                            title="Save immediately"
+                        >
+                            Quick add
+                        </label>
+                    </div>
+                    {#if !quickAdd}
+                        <span
+                            class="text-xs text-neutral-500 dark:text-neutral-400"
+                        >
+                            Uncheck to set name and edit sites
+                        </span>
+                    {/if}
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center">
                 <button
                     onclick={clearSites}
                     disabled={!sites.trim()}
@@ -240,9 +328,19 @@
                     class="flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed rounded-lg transition-colors duration-200 shadow-sm"
                 >
                     <Save size={16} />
-                    Save Collection
+                    {quickAdd ? "Save Collection" : "Edit & Save"}
                 </button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Collection Edit Modal -->
+<CollectionEditModal
+    show={showEditModal}
+    sites={editingSites}
+    {collectionName}
+    onSave={saveEditedCollection}
+    onCancel={cancelEditModal}
+    onNameChange={updateCollectionName}
+/>

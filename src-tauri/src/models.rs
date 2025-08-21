@@ -11,6 +11,7 @@ pub struct SiteEntry {
 pub struct SaveCollectionRequest {
     pub sites: Vec<SiteEntry>,
     pub config: Option<CollectionConfig>,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

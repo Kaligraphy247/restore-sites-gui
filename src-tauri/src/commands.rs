@@ -18,7 +18,7 @@ pub fn save_collection(request: SaveCollectionRequest) -> Result<CollectionData,
     let collection_data = CollectionData {
         sites: request.sites,
         created_at: Utc::now(),
-        name: None,                                 // Could be set later
+        name: request.name,                         // Use provided name
         config: request.config.unwrap_or_default(), // Use provided config or default
     };
 

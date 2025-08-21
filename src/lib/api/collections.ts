@@ -22,6 +22,7 @@ export class CollectionAPI {
         request: {
           sites: request.sites,
           config: request.config || DEFAULT_COLLECTION_CONFIG,
+          name: request.name,
         },
       });
       return result;
@@ -111,6 +112,7 @@ export class CollectionAPI {
 export async function saveCollection(
   sites: SiteEntry[],
   config?: Partial<CollectionConfig>,
+  name?: string,
 ): Promise<CollectionData> {
   const fullConfig: CollectionConfig = {
     browser_profile_id: config?.browser_profile_id,
@@ -122,6 +124,7 @@ export async function saveCollection(
   return CollectionAPI.saveCollection({
     sites,
     config: fullConfig,
+    name,
   });
 }
 

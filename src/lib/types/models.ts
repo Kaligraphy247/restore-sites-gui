@@ -8,6 +8,7 @@ export interface SiteEntry {
 export interface SaveCollectionRequest {
   sites: SiteEntry[];
   config?: CollectionConfig;
+  name?: string;
 }
 
 export interface CollectionData {
