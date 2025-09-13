@@ -99,4 +99,24 @@ function formatDate(dateStr: string): string {
   }
 }
 
-export { rsplit, formatUrl, formatDate };
+/**
+ * Click outside action for Svelte components
+ * Triggers callback when user clicks outside the element
+ */
+function clickOutside(node: HTMLElement, callback: () => void) {
+  const handleClick = (event: MouseEvent) => {
+    if (!node.contains(event.target as Node)) {
+      callback();
+    }
+  };
+
+  document.addEventListener("click", handleClick, true);
+
+  return {
+    destroy() {
+      document.removeEventListener("click", handleClick, true);
+    },
+  };
+}
+
+export { rsplit, formatUrl, formatDate, clickOutside };

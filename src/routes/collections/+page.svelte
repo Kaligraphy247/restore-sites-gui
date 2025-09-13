@@ -8,9 +8,13 @@
         Globe,
         Search,
         X,
+        ChevronDown,
+        ChevronUp,
     } from "@lucide/svelte";
     import { restoreCollection } from "$lib/types";
     import Fuse from "fuse.js";
+    import { slide } from "svelte/transition";
+    import DatePicker from "$lib/../components/DatePicker.svelte";
 
     let { data }: PageProps = $props();
     console.log(data.collections);
@@ -18,6 +22,52 @@
     // Search state
     let searchQuery = $state("");
     let searchInput: HTMLInputElement;
+
+    // Date filter states
+    let startDate = $state<Date | null>(null);
+    let endDate = $state<Date | null>(null);
+    let isAccordionOpen = $state(false);
+
+    // Auto-default end date when start is selected
+    $effect(() => {
+        if (startDate && !endDate) {
+            endDate = new Date(); // Default to today
+        }
+    });
+
+    // Function to clear date filters
+    function clearDateFilters() {
+        startDate = null;
+        endDate = null;
+        isAccordionOpen = false;
+    }
+
+    // Handle date picker changes
+    function handleStartDateChange(date: Date | null) {
+        startDate = date;
+    }
+
+    function handleEndDateChange(date: Date | null) {
+        endDate = date;
+    }
+
+    // Date filtering derived store (level 1)
+    let dateFilteredCollections = $derived.by(() => {
+        if (!startDate && !endDate) {
+            return data.collections;
+        }
+        const start = startDate ? new Date(startDate.setHours(0, 0, 0, 0)) : null;
+        let effectiveEnd = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null;
+        // If start is selected but end is not, use today as end
+        if (startDate && !endDate) {
+            effectiveEnd = new Date();
+            effectiveEnd.setHours(23, 59, 59, 999);
+        }
+        return data.collections.filter(collection => {
+            const created = new Date(collection.created_at);
+            return (!start || created >= start) && (!effectiveEnd || created <= effectiveEnd);
+        });
+    });
 
     // Fuse.js configuration
     const fuseOptions = {
@@ -32,16 +82,17 @@
         ignoreLocation: true // Don't factor in location of match
     };
 
-    // Initialize Fuse instance
-    const fuse = new Fuse(data.collections, fuseOptions);
-
-    // Filtered collections based on search
+    // Filtered collections: date filter (level 1) chained with search (level 2)
     let filteredCollections = $derived.by(() => {
+        let searchData = dateFilteredCollections;
+
         if (!searchQuery.trim()) {
-            return data.collections;
+            return searchData;
         }
-        
-        const results = fuse.search(searchQuery.trim());
+
+        // Create Fuse instance on the date-filtered data for search
+        const fuseInstance = new Fuse(searchData, fuseOptions);
+        const results = fuseInstance.search(searchQuery.trim());
         return results.map(result => result.item);
     });
 
@@ -67,9 +118,16 @@
             Collections
         </h2>
         <div class="text-sm text-neutral-500 dark:text-neutral-400">
-            {searchQuery ? filteredCollections.length : data.collections.length} collection{(searchQuery ? filteredCollections.length : data.collections.length) !== 1
-                ? "s"
-                : ""}{searchQuery ? ` (${data.collections.length} total)` : ""}
+            {filteredCollections.length} collection{filteredCollections.length !== 1 ? "s" : ""}
+            {#if startDate || endDate || searchQuery}
+                ({data.collections.length} total)
+                {#if startDate || endDate}
+                    {searchQuery ? ", " : ""}date filtered
+                {/if}
+                {#if searchQuery}
+                    {startDate || endDate ? " + " : ""}search: "{searchQuery}"
+                {/if}
+            {/if}
         </div>
     </div>
 
@@ -93,6 +151,70 @@
             >
                 <X size={16} />
             </button>
+        {/if}
+    </div>
+
+    <!-- Date Filter Accordion -->
+    <div class="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-visible">
+        <!-- Accordion Header -->
+        <button
+            onclick={() => (isAccordionOpen = !isAccordionOpen)}
+            class="w-full flex items-center justify-between px-4 py-3 text-left bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+            aria-expanded={isAccordionOpen}
+            aria-controls="date-filter-content"
+        >
+            <div class="flex items-center gap-2">
+                <Calendar size={16} class="text-neutral-500 dark:text-neutral-400" />
+                <span class="font-medium text-neutral-700 dark:text-neutral-300">Filter by Date</span>
+            </div>
+            {#if isAccordionOpen}
+                <ChevronUp size={16} class="text-neutral-500 dark:text-neutral-400" />
+            {:else}
+                <ChevronDown size={16} class="text-neutral-500 dark:text-neutral-400" />
+            {/if}
+        </button>
+
+        <!-- Accordion Content -->
+        {#if isAccordionOpen}
+            <div
+                id="date-filter-content"
+                class="px-4 py-3 bg-neutral-50 dark:bg-neutral-700/50"
+                transition:slide={{ duration: 200 }}
+            >
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Start Date -->
+                        <DatePicker
+                            id="start-date"
+                            label="From"
+                            value={startDate}
+                            placeholder="Select start date"
+                            onchange={handleStartDateChange}
+                        />
+
+                        <!-- End Date -->
+                        <DatePicker
+                            id="end-date"
+                            label="To"
+                            value={endDate}
+                            placeholder="Select end date"
+                            min={startDate}
+                            onchange={handleEndDateChange}
+                        />
+                    </div>
+
+                    <!-- Clear Button -->
+                    <div class="flex justify-end">
+                        <button
+                            onclick={clearDateFilters}
+                            class="px-4 py-2 text-sm bg-neutral-200 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-300 rounded-md hover:bg-neutral-300 dark:hover:bg-neutral-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!startDate && !endDate}
+                        >
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
         {/if}
     </div>
 
