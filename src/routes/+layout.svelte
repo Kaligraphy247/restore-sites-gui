@@ -5,7 +5,6 @@
   import { Settings, House, Library } from "@lucide/svelte";
   import { Toaster } from "svelte-sonner";
   import { page } from "$app/state";
-  import { fade, fly } from "svelte/transition";
   import { navigating } from "$app/stores";
   import FloatingAddButton from "../components/FloatingAddButton.svelte";
   import CreateCollectionModal from "../components/collections/CreateCollectionModal.svelte";
@@ -104,15 +103,19 @@
       <h1 class="text-lg font-semibold">Restore Sites</h1>
     </header>
     <main class="flex-1 overflow-y-auto p-4">
-      {#key currentPath}
-        <div
-          in:fade={{ duration: 300, delay: 150 }}
-          out:fade={{ duration: 150 }}
-          class="w-full"
-        >
+      {#if $navigating}
+        <!-- Global Loading Spinner -->
+        <div class="flex items-center justify-center h-full w-full">
+          <div class="flex flex-col items-center gap-3 p-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-2 border-neutral-300 border-t-neutral-600 dark:border-neutral-600 dark:border-t-neutral-300"></div>
+            <p class="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+          </div>
+        </div>
+      {:else}
+        <div class="w-full">
           {@render children()}
         </div>
-      {/key}
+      {/if}
     </main>
   </div>
   

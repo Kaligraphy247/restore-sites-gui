@@ -50,27 +50,18 @@
     let tempProfileId = $state<string>("");
     let useCustomConfig = $state(false);
 
+    // Loading state for collection and profiles
+    let isLoading = $state(true);
+
     // Copy sites for editing - initialize empty first
     let sites = $state<SiteEntry[]>([]);
 
     // Selection state for sites
     let selectedSites = $state<Set<number>>(new Set());
 
-    // Load profiles on mount
+    // Initialize state from collection data and load profiles on mount
     $effect(() => {
-        async function loadProfiles() {
-            try {
-                profiles = await getBrowserProfiles();
-            } catch (error) {
-                console.error("Failed to load profiles:", error);
-                toast.error("Failed to load browser profiles");
-            }
-        }
-        loadProfiles();
-    });
-
-    // Initialize state from collection data
-    $effect(() => {
+        // Initialize collection state
         if (collection) {
             sites = [...collection.sites];
             tempProfileId = collection.config?.browser_profile_id || "";
@@ -80,6 +71,19 @@
                 !collection.config?.browser_profile_id &&
                 !!(collection.config?.browser || collection.config?.mode);
         }
+
+        // Load profiles and then mark loading as complete
+        async function initializeAll() {
+            try {
+                profiles = await getBrowserProfiles();
+            } catch (error) {
+                console.error("Failed to load profiles:", error);
+                toast.error("Failed to load browser profiles");
+            } finally {
+                isLoading = false;
+            }
+        }
+        initializeAll();
     });
 
     // Computed values for selection
@@ -369,8 +373,17 @@
     }
 </script>
 
-<div class="space-y-6 mb-8">
-    <!-- Header -->
+{#if isLoading}
+    <!-- Local Loading Spinner -->
+    <div class="flex items-center justify-center h-full w-full">
+        <div class="flex flex-col items-center gap-3 p-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-2 border-neutral-300 border-t-neutral-600 dark:border-neutral-600 dark:border-t-neutral-300"></div>
+            <p class="text-sm text-neutral-500 dark:text-neutral-400">Loading collection...</p>
+        </div>
+    </div>
+{:else}
+    <div class="space-y-6 mb-8">
+        <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
             <a
@@ -725,3 +738,4 @@
         </div>
     </div>
 </Dialog>
+{/if}
