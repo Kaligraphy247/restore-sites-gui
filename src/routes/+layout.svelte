@@ -2,7 +2,7 @@
   import "../app.css";
   import Sidebar from "../components/sidebar/Sidebar.svelte";
   import SidebarItem from "../components/sidebar/SidebarItem.svelte";
-  import { Settings, House, Library } from "@lucide/svelte";
+  import { Settings, House, Library, Plus, RefreshCw } from "@lucide/svelte";
   import { Toaster } from "svelte-sonner";
   import { page } from "$app/state";
   import { navigating } from "$app/stores";
@@ -18,6 +18,11 @@
   $effect(() => {
     currentPath = page.url.pathname;
   });
+
+  // Determine if we're on a collection detail page
+  let isCollectionDetailPage = $derived(
+    /^\/collections\/\d+$/.test(currentPath)
+  );
 
   // Floating add button state
   let showCreateModal = $state(false);
@@ -38,7 +43,7 @@
       }, name);
       toast.success(`Collection "${name}" created with ${sites.length} sites`);
       showCreateModal = false;
-      
+
       // If we're on the collections page, we might want to refresh
       if (currentPath.includes('/collections')) {
         // The collections page should handle its own refresh
@@ -119,9 +124,11 @@
     </main>
   </div>
   
-  <!-- Floating Add Button -->
-  <FloatingAddButton onClick={openCreateModal} />
-  
+  <!-- Floating Add Button (hidden on collection detail pages) -->
+  {#if !isCollectionDetailPage}
+    <FloatingAddButton onClick={openCreateModal} />
+  {/if}
+
   <!-- Global Create Collection Modal -->
   <CreateCollectionModal
     show={showCreateModal}

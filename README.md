@@ -2,7 +2,6 @@
 
 A modern, cross-platform desktop application for managing and restoring website collections. Built with Tauri, SvelteKit, and Rust.
 
-![Restore Sites Screenshot](docs/screenshot.png)
 
 ## Overview
 
@@ -72,7 +71,7 @@ bun run tauri build
 ### Quick Start
 1. Launch Restore Sites
 2. Paste your browser tabs in the format: `Title https://example.com`
-3. Click "Save Collection" 
+3. Click "Save Collection"
 4. View and manage your collections in the Collections page
 5. Click "Restore All" to open all sites in your browser
 

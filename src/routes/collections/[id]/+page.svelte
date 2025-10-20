@@ -8,6 +8,7 @@
         Calendar,
         Settings,
         Wrench,
+        RefreshCw,
     } from "@lucide/svelte";
     import { goto } from "$app/navigation";
     import {
@@ -26,6 +27,8 @@
     import Dialog from "$lib/../components/Dialog.svelte";
     import SelectionControls from "$lib/../components/SelectionControls.svelte";
     import SiteList from "$lib/../components/SiteList.svelte";
+    import FloatingAddButton from "$lib/../components/FloatingAddButton.svelte";
+    import UpdateCollectionModal from "$lib/../components/collections/UpdateCollectionModal.svelte";
 
     let { data }: { data: PageData } = $props();
 
@@ -41,6 +44,7 @@
     let showNameDialog = $state(false);
     let showConfigDialog = $state(false);
     let showDeleteDialog = $state(false);
+    let showUpdateModal = $state(false);
     let tempName = $state("");
     let tempBrowser = $state<Browser>("Chrome");
     let tempMode = $state<BrowserMode>("Incognito");
@@ -370,6 +374,57 @@
 
     function handleShowAddForm(show: boolean) {
         showAddForm = show;
+    }
+
+    function openUpdateModal() {
+        showUpdateModal = true;
+    }
+
+    function closeUpdateModal() {
+        showUpdateModal = false;
+    }
+
+    async function handleBulkUpdate(newSites: SiteEntry[], refreshMode: boolean) {
+        try {
+            let updatedSites: SiteEntry[];
+
+            if (refreshMode) {
+                // Only add sites with unique title+url combinations
+                const existingSet = new Set(
+                    sites.map(s => `${s.title}|||${s.url}`)
+                );
+                const uniqueNewSites = newSites.filter(
+                    s => !existingSet.has(`${s.title}|||${s.url}`)
+                );
+                updatedSites = [...sites, ...uniqueNewSites];
+
+                if (uniqueNewSites.length === 0) {
+                    toast.info("No new sites to add - all sites already exist");
+                    showUpdateModal = false;
+                    return;
+                }
+
+                toast.success(`Added ${uniqueNewSites.length} new site${uniqueNewSites.length !== 1 ? 's' : ''}`);
+            } else {
+                // Add all sites (allow duplicates)
+                updatedSites = [...sites, ...newSites];
+                toast.success(`Added ${newSites.length} site${newSites.length !== 1 ? 's' : ''}`);
+            }
+
+            const updated = await updateCollection(
+                collection.id,
+                updatedSites,
+                collection.name,
+                collection.config,
+            );
+
+            collection = updated;
+            sites = [...updatedSites];
+            showUpdateModal = false;
+        } catch (error) {
+            console.error("Failed to update collection:", error);
+            toast.error("Failed to update collection");
+        }
     }
 </script>
 
@@ -738,4 +793,20 @@
         </div>
     </div>
 </Dialog>
+
+<!-- Floating Update Button -->
+<FloatingAddButton
+    onClick={openUpdateModal}
+    icon={RefreshCw}
+    title="Update collection"
+    ariaLabel="Update collection with new sites"
+/>
+
+<!-- Update Collection Modal -->
+<UpdateCollectionModal
+    show={showUpdateModal}
+    currentSites={sites}
+    onUpdate={handleBulkUpdate}
+    onCancel={closeUpdateModal}
+/>
 {/if}
