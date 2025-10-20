@@ -1,6 +1,3 @@
 {
-  "svelte.enable-ts-plugin": true,
-  "cSpell.words": [
-    "fontsource"
-  ]
+  "svelte.enable-ts-plugin": true
 }

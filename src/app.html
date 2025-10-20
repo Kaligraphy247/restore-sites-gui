@@ -5,6 +5,20 @@
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tauri + SvelteKit + Typescript App</title>
+    <script>
+      // Prevent dark mode flicker by immediately setting styles
+      (function() {
+        const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (isDarkMode) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.backgroundColor = '#171717';
+          document.documentElement.style.colorScheme = 'dark';
+        } else {
+          document.documentElement.style.backgroundColor = '#ffffff';
+          document.documentElement.style.colorScheme = 'light';
+        }
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
